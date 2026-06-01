@@ -1,6 +1,6 @@
 # Intra-Layer Parallelism on Tiled NVDLA Accelerators in ESP
 
-**Author:** Wenxuan Xu (`xu.wenxuan@columbia.edu`)
+**Author:** Wenxuan Xu
 **Course:** CSEE E6868 — Embedded Scalable Platforms, Columbia University, Spring 2026
 **Platform:** Xilinx VCU118 FPGA · ESP SoC · 4× NVDLA `nv_small_fpga` tiles
 
