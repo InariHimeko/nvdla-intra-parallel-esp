@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.bbl
+*.blg
+
+# Regenerable NVDLA loadables (rebuild with src/host/gen_*.py)
+*.nvdla
+wisdom.dir/
+resnet18_out/
+roofline_out/
+
+# Editor / OS
+.DS_Store
+*.swp

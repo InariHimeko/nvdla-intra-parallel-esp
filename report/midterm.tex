@@ -1,0 +1,171 @@
+\documentclass[10pt,sigconf,nonacm]{acmart}
+
+\settopmatter{printacmref=false, printccs=false, printfolios=true}
+
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{url}
+
+\graphicspath{{figure/}{figures/}{midterm_ppt_media/}}
+
+\setcopyright{none}
+
+\acmConference[CSEE E6868]{Embedded Scalable Platforms}{Spring 2026}{New York, NY, USA}
+\acmYear{2026}
+\copyrightyear{2026}
+
+\acmPrice{15.00}
+
+\begin{document}
+\title{Intra-Layer Parallelism on Tiled NVDLA Accelerators in ESP}
+\subtitle{\normalsize CSEE E6868 - Embedded Scalable Platforms - Spring 2026}
+
+\author{Wenxuan Xu}
+\email{xu.wenxuan@columbia.edu}
+
+\renewcommand{\shortauthors}{W. Xu}
+
+\begin{abstract}
+{\small\em
+This report summarizes the progress made since the project proposal on intra-layer parallelism for tiled NVDLA accelerators in ESP. The single-NVDLA integration flow has been reproduced on FPGA, and the software stack has been studied in enough detail to narrow the first implementation target. At this point, the project is focused on coarse-grained intra-layer parallelism for a single layer across multiple NVDLA instances, starting with output-channel partitioning. The current proof-of-concept isolates one convolution layer, generates a baseline loadable together with two split loadables, and prepares the runtime flow needed to launch the split parts in parallel for validation. The immediate next step is to verify correctness on the actual FPGA platform, then extend the same method to more tiles and carry out a performance study. This report also describes the experimental setup and the plan to validate the design before moving to larger models and additional split strategies.
+}
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+\label{sec:intro}
+General-purpose processors struggle to keep up with the computational density required by modern deep learning workloads. This is one reason why domain-specific accelerators have become standard in edge and embedded systems. At the same time, simply building a larger accelerator is not always the best answer. Tiled designs, where several smaller accelerator instances cooperate on the same workload, offer a cleaner path to scaling and match the architecture style of platforms such as ESP \cite{esp_iccad, survey_accel}.
+
+This project studies how to exploit that idea using multiple NVDLA instances inside ESP. The long-term objective remains the same as in the proposal: distribute the work of a neural-network layer across several NVDLA tiles and study both correctness and performance as the number of tiles grows. The midterm progress is that the problem has become much more concrete. After working through the NVDLA integration flow and tracing the software stack, we simplified the long-term goal to a proof-of-concept as our midterm milestone, which is small enough to debug but still representative of the full problem.
+
+\subsection{Motivation}
+ESP already supports instantiating multiple NVDLA accelerators, but it does not yet provide coarse-grained intra-layer parallelism, where the computation of a single neural-network layer is partitioned and executed cooperatively across multiple NVDLA instances. That missing capability is the core of this project. The main challenge is not just issuing work to multiple devices. The harder part is producing task descriptions, tensor layouts, and memory mappings that remain valid after a layer has been partitioned.
+
+The motivation for focusing on this problem is still twofold. First, multi-tile execution may reduce latency for layers that are too large for a single instance to handle efficiently. Second, ESP makes it possible to observe system-level effects, especially on the NoC and memory system, that are easy to hide in purely simulator-based studies.
+
+\begin{figure}[t]
+  \centering
+  % Make sure to upload your image and name it 'system_diagram.png'
+  \includegraphics[width=\columnwidth]{doc/fig/system_diagram.png}
+  \caption{Proposed Architecture: Intra-Layer Parallelism distributing a single Neural Network layer across four NVDLA tiles interconnected via NoC.}
+  \label{fig:arch_diagram}
+\end{figure}
+
+\section{Progress to Date}
+\label{sec:progress}
+
+\subsection{Baseline Setup}
+The first piece of progress was reproducing the official single-NVDLA ESP flow \cite{esp_nvdla_guide}. That included bitstream deployment and the software path needed to run the NVDLA runtime from Linux. Completing that step was important because it separated basic integration issues from the actual research problem. At this stage, the single-instance flow is no longer the blocker.
+
+The next step was to understand how ESP and NVDLA handle multi-instance execution. The ESP software stack already contains user-level support for launching several accelerators in parallel, and the NVDLA runtime in Columbia's fork already supports selecting a target instance through the \texttt{--instance} option. In other words, the platform already knows how to address multiple NVDLA devices and run independent workloads on them. That part of the problem is largely solved.
+
+\subsection{Refined Technical Direction}
+The more important midterm result is that the implementation strategy has changed. The proposal left open the possibility of modifying the NVDLA runtime and driver to break one workload apart dynamically. After studying the compiler and runtime code paths, I no longer think that is the right first step.
+
+The current runtime is good at rebinding buffers and selecting a device instance, but it is not designed to turn one compiled layer into two different sub-layers at execution time. For a true split, the output tensor shape changes, the weight tensor has to be partitioned, and the generated low-level descriptors need to remain self-consistent. Because of that, the first proof-of-concept is now based on compiler-generated split loadables, with the runtime used mainly for orchestration.
+
+This is why the current milestone is a single-layer experiment rather than an end-to-end model. The most practical path is to isolate one convolution layer, partition it in a way that avoids unnecessary corner cases, and verify that the split outputs match a single-instance baseline before moving on.
+
+\subsection{Current Proof-of-Concept}
+The proof-of-concept chosen for this stage is output-channel splitting of the first convolution layer in a LeNet/MNIST example taken from the local NVDLA documentation tree \cite{nvdla_sw_manual}. The layer is isolated as a one-layer network. A full baseline loadable is generated for the original layer, and two split loadables are generated for complementary channel ranges. Concretely, the current example splits a 20-channel convolution into two 10-channel sub-problems.
+
+This setup is small, but it captures the main challenge of intra-layer parallelism. Each NVDLA instance receives the same input activation, but a different subset of the weights and biases. The two outputs are then compared against the full baseline by concatenating along the channel dimension. I also prepared a small runtime-side helper so that multiple loadables can be launched from one process and synchronized before submission, while still keeping the outputs separate for debugging and validation.
+
+\section{Experimental Setup and Validation Plan}
+\label{sec:setup}
+
+\subsection{Experimental Setup}
+The validation environment is an ESP SoC configured with at least two NVDLA instances on FPGA, running the Linux image used in the standard NVDLA tutorial flow. The software side includes the NVDLA compiler, the runtime application, and the set of example networks already distributed with the NVDLA documentation. For the first experiment, the network is intentionally simple: the first convolution layer of LeNet, driven by the same MNIST input format used in the baseline tutorial.
+
+The experiment is organized around three compiled artifacts:
+\begin{itemize}
+    \item one full-layer loadable, used as the correctness baseline;
+    \item one split loadable for the first half of the output channels;
+    \item one split loadable for the second half of the output channels.
+\end{itemize}
+
+The board-side flow is straightforward. First, the unsplit loadable is run on one NVDLA instance and its output tensor is dumped. Then, the two split loadables are run in parallel on two different NVDLA instances, and both outputs are dumped separately. For the first round of experiments, the model is reduced to a single convolution layer on purpose. In a full network, the output of a split layer has to be reconstructed before it can be passed to the next unsplit layer, so debugging the one-layer case first reduces the number of failure modes.
+
+Once the two-instance setup is verified, the same method will be extended to three and four instances by partitioning the output channels more finely. After that, the test will be moved from the isolated LeNet layer to larger model fragments and eventually to end-to-end flows where possible.
+
+\subsection{Validation Plan}
+The first validation criterion is functional correctness. For output-channel splitting, the merged result must reproduce the unsplit layer output exactly, or at least within the expected numerical tolerance of the chosen precision mode. If the unsplit layer output is denoted by $Y$ and the two split outputs are $Y_0$ and $Y_1$, then the check is simply that concatenating $Y_0$ and $Y_1$ along the channel dimension reconstructs $Y$. This is the main reason why output-channel splitting is the first strategy being pursued: the correctness condition is easy to state and easy to inspect when something goes wrong.
+
+After correctness, the next step is performance. The first measurements will focus on end-to-end execution time for the isolated layer, comparing one instance against two or more instances. The basic speedup metric will be the ratio between the single-instance latency and the split-execution latency. In addition, I plan to record how performance changes as the number of participating NVDLA instances increases, since this is where memory traffic and synchronization overhead may become visible.
+
+The final part of the validation plan is system-level measurement. I would like to collect bandwidth and timing information to determine whether scaling is limited by computation, NoC traffic, or memory contention. This becomes especially important once the work moves beyond one simple layer and starts to stress the full memory hierarchy.
+
+\section{Next Steps and Updated Milestones}
+\label{sec:milestones}
+The overall timeline from the proposal still holds, but the technical path has been refined.
+
+\begin{enumerate}
+  \item \textbf{Baseline Setup and Stack Study (completed)}
+  \begin{itemize}
+      \item Reproduced the single-NVDLA ESP tutorial and verified the deployment flow.
+      \item Studied the NVDLA compiler/runtime stack and the existing multi-instance support.
+      \item Narrowed the first implementation target to output-channel splitting of a single layer.
+  \end{itemize}
+
+  \item \textbf{Two-Instance Split Verification (current step)}
+  \begin{itemize}
+      \item Run the full and split LeNet \texttt{conv1} loadables on the FPGA platform.
+      \item Compare the concatenated split output against the unsplit baseline.
+      \item Debug any remaining issues in tensor layout, output dumping, or loadable generation.
+  \end{itemize}
+
+  \item \textbf{Scaling to More Tiles (next milestone)}
+  \begin{itemize}
+      \item Extend the same output-channel split method to more than two NVDLA instances.
+      \item Study how evenly the workload can be partitioned and how the runtime overhead changes.
+  \end{itemize}
+
+  \item \textbf{Performance Study}
+  \begin{itemize}
+      \item Measure latency, speedup, and scaling efficiency for the split layer.
+      \item Examine how memory-bandwidth pressure changes as more tiles are used.
+      \item Use ESP monitoring support where available to identify bottlenecks.
+  \end{itemize}
+
+  \item \textbf{Alternative Split Methods and Larger Models (if time permits)}
+  \begin{itemize}
+      \item Explore output-spatial, input-channel, and batch-based splitting.
+      \item Move from a single isolated layer to larger model fragments and, if feasible, end-to-end inference flows.
+      \item Compare the engineering cost and performance tradeoffs of the different partitioning methods.
+  \end{itemize}
+\end{enumerate}
+
+\section{Critical Aspects}
+\textbf{Software stack complexity:} This remains the largest risk. The main difference compared with the proposal is that the first implementation is no longer framed as a runtime-only or driver-only solution. The midterm work suggests that generating valid split loadables and then orchestrating them at runtime is a more controlled first step. Even so, the NVDLA software stack is still complicated enough that debugging descriptor mismatches or tensor-layout errors can consume significant time.
+
+% \textbf{Validation beyond one layer:} A single-layer result is necessary, but it is not yet a full-network solution. In a real model, the output of a split layer becomes the input of the following layer, which means that reconstruction, synchronization, and intermediate activation management all matter. Extending the current proof-of-concept into an end-to-end flow will therefore require more than simply repeating the same experiment many times.
+
+\textbf{Memory bandwidth and system bottlenecks:} Using more NVDLA tiles does not automatically mean better performance. If the NoC or the off-chip memory system becomes the bottleneck, the measured speedup may flatten quickly. This is one reason why the performance study has to include bandwidth-oriented measurements, not just kernel latency.
+
+\begin{thebibliography}{1}
+
+\bibitem{simba}
+Y. S. Shao, J. Clemons, R. Venkatesan, B. Zimmer, M. Fojtik, N. Jiang, B. Keller, A. Klinefelter, N. Pinckney, P. Raina, S. G. Tell, Y. Zhang, W. J. Dally, J. Emer, C. T. Gray, B. Khailany, and S. W. Keckler, ``Simba: Scaling Deep-Learning Inference with Multi-Chip-Module-Based Architecture,'' in \emph{Proceedings of the 52nd Annual IEEE/ACM International Symposium on Microarchitecture (MICRO)}, 2019.
+
+\bibitem{nvdla_web}
+NVIDIA Corporation, ``NVDLA Open Source Project,'' http://nvdla.org/, Accessed: 2026.
+
+\bibitem{nvdla_sw_manual}
+NVIDIA Corporation, ``Software Manual,'' \emph{NVDLA Documentation}, 2026. [Online]. Available: \url{https://nvdla.org/sw/contents.html}
+
+\bibitem{esp_iccad}
+P. Mantovani, D. Giri, G. Di Guglielmo, L. Piccolboni, J. Zuckerman, E. G. Cota, M. Petracca, C. Pilato, and L. P. Carloni, ``Agile SoC Development with Open ESP,'' in \emph{IEEE/ACM International Conference on Computer Aided Design (ICCAD)}, 2020.
+
+\bibitem{esp_vlsid}
+L. P. Carloni, ``ESP: The Open-Source SoC Platform,'' in \emph{International Conference on VLSI Design and International Conference on Embedded Systems (VLSID)}, 2020.
+
+\bibitem{esp_nvdla_guide}
+System-Level Design Group at Columbia University, ``Guide -- How to: integrate a third-party accelerator (e.g. NVDLA),'' \emph{ESP Documentation}, Aug. 2021. [Online]. Available: \url{https://www.esp.cs.columbia.edu/docs/thirdparty_acc/thirdparty_acc-guide/}
+
+\bibitem{survey_accel}
+A. Reuther, P. Michaleas, M. Jones, V. Gadepally, S. Samsi, and J. Kepner, ``Survey of Machine Learning Accelerators,'' in \emph{IEEE High Performance Extreme Computing Conference (HPEC)}, 2020.
+
+\end{thebibliography}
+
+\end{document}

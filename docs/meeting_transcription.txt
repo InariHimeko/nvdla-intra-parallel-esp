@@ -1,0 +1,177 @@
+**Advisor:** Because every time you ask to the memory for one burst, you pay a fixed amount of cycle that it's just for the handshake, right?
+
+**Wenxuan:** Yes, and that will waste time or something like...
+
+**Advisor:** And we don't support multiple outstanding transactions, so we can only issue the following read request only after we have obtained the response.
+
+**William:** Oh, so if we wait...
+
+**Advisor:** Yeah, that could be another... I don't know how it's done inside. But probably it's issuing more than...
+
+**Wenxuan:** You mean the NVDLA logic? Ah, that would be interesting to find out. But we can...
+
+**Advisor:** Actually there is the list of code available. Yeah.
+
+**Wenxuan:** Yeah, we should look into it.
+
+**Advisor:** You could look into it.
+
+**Wenxuan:** Okay, yeah, I can definitely just try to understand. I mean, it's not uh...
+
+**Advisor:** I think it would just be nice for the report, if you are able to, because what we are seeing is that we tend to be memory bounded in workloads that are at very high arithmetic intensity where we would expect to be compute bounded, right? And we looked into it and the documentation points to a very likely problem, which is the maximum burst size. We could try to dig a bit further and at least understand why the NVDLA was implemented like this. The reason is probably that internally the NVDLA has support to issue multiple outstanding transactions, right? But then we don't have the support to handle them on the SoC side, I think. These are hypotheses, but it would be nice for you to validate this hypothesis. It's not building anything, it's just looking into the code and making sure that this is the case, looking into how it was integrated.
+
+**Wenxuan:** Yeah.
+
+**Advisor:** I think you can first maybe ask an LLM to give you a clear understanding of the repo because it's going to be a lot of code. Probably a few tens of thousands of lines of SystemVerilog, so it's probably not going to be easy. But when you identify the place where the accelerator is requesting for data, then try really to understand what's going on. And if the accelerator is serializing this request or if the accelerator effectively is sending multiple requests that it will be able to serve, but the ESP stack is not allowing it to receive these multiple transactions that he requested because it's serving one at a time.
+
+**Wenxuan:** Okay. I see. Yeah, these are like the code and the logic, like how it manages the central data. I'll definitely look into that then.
+
+**Advisor:** Yeah, if we can pinpoint that that is the issue, then it's a good conclusion to the problem that we had. As a reference for an accelerator that is not requesting multiple transactions but is serializing the transaction and expects to be able to serve one request at a time, is for instance the one that we used in system-on-chip platforms. You took the course, right?
+
+**Wenxuan:** Yeah, yes.
+
+**Advisor:** So if you still have the docs of that repo, you can look at when you request from the DMA. This is SystemC, but it's still the same because after the DMA everything is ESP, right? So you can see that there you ask for filling the PLM and you wait. And when you receive the packet, you unpack them from the NoC and you put them in the PLM, then you go to the next PLM, you see what I mean, right? Instead, maybe it's not the smartest way to do stuff, right? Because you can send to memory a ton of requests, and if you are able to receive them even in order but in a pipelined way—not sequentially, not one at a time—then you're faster.
+
+**Wenxuan:** Yes, that may actually help the...
+
+**Advisor:** One last note, I think. So you used in the roofline diagram, I assume as a reference, the point that has the highest bandwidth, right?
+
+**Wenxuan:** Ah, okay, yeah, yes.
+
+**Advisor:** But this is not the theoretical peak given by the width of the NoC multiplied by the frequency for instance, right? It's much lower.
+
+**Wenxuan:** You mean like the bandwidth?
+
+**Advisor:** Yeah.
+
+**Wenxuan:** Oh yeah, yes, the bandwidth is lower.
+
+**Advisor:** Do you have an idea of what the bandwidth is here?
+
+**Wenxuan:** Yes, it's like the test by the measured...
+
+**Advisor:** Yeah. The measured one.
+
+**Wenxuan:** It picks the highest result measured as the bandwidth. So it's 5.85 gigabytes per second at 78 MHz. Ah, because you have the VC 1, 108... okay. Okay. And this comes from the fact it is 128 operations per cycle multiplied by the cycle per second which yields the... um, yeah, okay, ah no, but it's operations per second, bytes per second... okay. Where does this come from, this 7.5.4 bytes per cycle?
+
+**Wenxuan:** It's just the total amount of data transferred divided by the cycle of the accelerator, right?
+
+**Advisor:** Yes. Wait, say it again. So the peak compute comes from the Nvidia amount of MACs, right? And DRAM bandwidth, how did you calculate it? Say it again, please.
+
+**Wenxuan:** It measures, like it picks the highest result...
+
+**Advisor:** Like you assume that all the tasks are compute bound and you say this is the number of bytes transferred and this is the number of cycles we are compute bound, so this is the result, and you pick the highest.
+
+**Wenxuan:** Because if you assume that you're compute bound, you can say that the total amount of bytes transferred divided by the number of cycles of the total computation is equal to the bandwidth.
+
+**Advisor:** Why?
+
+**Wenxuan:** Because if you are compute bounded... no, I said compute, sorry, if you are memory bound. Sorry. If you are memory bound you can say, "Okay, I have to transfer this amount of bytes, it takes me to do the complete computation this amount of cycles, but since I am memory bound, ah okay, this would be my bandwidth," right? And then since you have all these layers that are all memory bound, you pick the maximum and you say, "Okay, this is my bandwidth, my maximum reachable bandwidth." Right? Does it make sense to you?
+
+**Advisor:** But still is not the real bandwidth.
+
+**Wenxuan:** Actual, yes, it's not the actual.
+
+**Advisor:** Still is not the actual bandwidth that the DRAM can give you, and you can use the nominal one there, right? Why is it not? Because you also have the protocol efficiency, right? Meaning you have the handshake that is not accounting for data transferred. Because if you represent it like this, it seems like this layer is able to exploit the complete bandwidth. But it's not the case, really.
+
+**Wenxuan:** Yes. The graph is not...
+
+**Advisor:** Do you agree on that? If it was true that we are 100% memory bounded, then it would be true that this is the maximum reachable bandwidth. Or like if you have the proof that 100% of your time is spent fetching data... Yes, no?
+
+**Wenxuan:** Yes.
+
+**Advisor:** But that's not the case.
+
+**Wenxuan:** But since you're dividing the number of bytes transferred by the total cycles, the total cycles are not accounting only for data transfer, right? They are also accounting for handshakes.
+
+**Advisor:** But this is the same as saying we are not really only memory bounded. Like if you are... Ah, I think I understand what... We don't have a pen.
+
+**William:** No.
+
+**Advisor:** Like, I can get a piece of paper. But what I'm saying is... like the time it takes to send the request to the memory controller, for example.
+
+**William:** Yes, you're also accounting for that, right? And you're not transferring data in that situation.
+
+**Advisor:** But don't we have a mechanism to exclude that time by looking at some monitors in the memory tile? I think actually you could. That you could do, because you have a deterministic access pattern and you have always the same price paid for every transaction. Right? So what you could do is say, "Okay, I spend 50 cycles asking for data to the DRAM before receiving the first flit."
+
+**William:** But even just extracting it from monitors, I mean not doing it by hand.
+
+**Advisor:** From monitors I'm not sure because I think you're accounting for the whole request, right? Like you send, the monitor starts counting from the first request you receive, and then when data arrive and you're streaming data they are still counting. Okay, yeah, it might be a little bit too complicated. But I mean, you could do it in a different way, right? Like we did with the dummy accelerator that is only doing fetching from memory and putting in the PLM. Because there, let's say that you do a single burst, you're only sending data and you're paying an overhead just once that you can exclude.
+
+**William:** Can't we just give him the number that we know from that characterization? I don't remember what it was, but I think it's around 70 cycles for... between 50 and 70 cycles.
+
+**Advisor:** Bytes per cycle?
+
+**William:** No, ah no, bytes per cycle it's... I think it's 1.6 gigabytes per second, the one we measured.
+
+**Advisor:** Which is?
+
+**William:** Which is 256... it's 1.6 divided by the period of a cycle, right? I got that number because it was 128 by 100 megahertz divided by 2.
+
+**Advisor:** 128 by 100 megahertz. Ah, megahertz. So 100... and then divided by 2. 6.4. 6.4 gigabytes per second. So there was something else... or no? Or this is the number? Maybe this is the number. Which per cycle is... of element per cycle? Yeah, bytes per cycle. You need to multiply by cycle over frequency, no? Divide. Divide, sorry.
+
+**William:** 64 bytes per cycle.
+
+**Advisor:** Ah yes, yes, because it's 128 divided by 2. Ah, this actually makes sense. This 5.75... Can you, so Wenxuan, I need to understand, but can you tell me again how you... maybe you already told me but I forgot, how did you get this number? Do you remember? And in the meantime, William, why 128 bytes?
+
+**William:** 128... no, it's bit.
+
+**Advisor:** Ah, so different, right. Did I say bytes?
+
+**William:** Yes.
+
+**Advisor:** Yeah, and here is saying byte.
+
+**William:** Ah.
+
+**Advisor:** Yeah, yeah. Sure, take your time. No, no, no, then it's too much. We don't have like, even if the best possible condition we are bounded by the NoC width, right?
+
+**William:** Yes.
+
+*(Skipping forward in the conversation)*
+
+**Advisor:** Okay, Wenxuan, let's do this. In general, the characterization is good, it's useful for us. You mentioned that you wanted to do research, right, this summer?
+
+**Wenxuan:** Yes, possibly.
+
+**Advisor:** Is that possible or... usually yes, but you have to ask Luca and talk to him, and we can say that you did a good job on the project. You would like to keep working on this, right?
+
+**Wenxuan:** Yes, I really like this summer and/or next semester. I'm also seeking research opportunities from other professors. I'm wondering if that can be done simultaneously, like doing two research?
+
+**Advisor:** Ah... that... I don't know. I'm not sure. Who's the other professor?
+
+**Wenxuan:** Tanvir.
+
+**Advisor:** Ah, Tanvir Ahmed. Yes.
+
+**Wenxuan:** He's doing computer architecture.
+
+**Advisor:** Yes. I don't know, I should know but I don't remember how it works. We can ask. Because you will not do an internship?
+
+**Wenxuan:** No, I won't.
+
+**Advisor:** Okay, so you'll be here for the summer. Okay.
+
+**Wenxuan:** So I think I'll have enough time to do both of them... What about next semester?
+
+**Advisor:** Yeah, that might also work. Like, how many classes do you need to take?
+
+**Wenxuan:** I don't remember how it works. So you need to take like two more courses for the next semester. So...
+
+**Advisor:** I can replace one of them with the project course. That will work. Okay. We can ask about the summer. Just to be clear, if you have to choose, you would go for the other one?
+
+**Wenxuan:** I think I'm still deciding, but since I'm starting to meet with the professor and getting to know the details, I think probably I'll do research with Professor Tanvir if only one can be chosen.
+
+**Advisor:** Okay. Okay, okay, okay, that's fine. Yeah, let us know if you need anything for the... When is your presentation?
+
+**Wenxuan:** Next Tuesday.
+
+**Advisor:** Okay. Let us know if you want to get some feedback on the presentation before then.
+
+**Wenxuan:** Yes, definitely. Yes. And on the report as well, because the report is due later.
+
+**Advisor:** It's due later, yes. Next week. Next Friday, I think. Okay. Yeah, thank you so much for the time.
+
+**Wenxuan:** No problem. I mean, it was a pleasure. Thank you too. Bye bye.
+
+**Advisor:** See you later.

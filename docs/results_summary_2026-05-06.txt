@@ -1,0 +1,419 @@
+================================================================================
+ESP-NVDLA intra-layer parallelism study — consolidated results, 2026-05-06
+================================================================================
+Author:                Wenxuan Xu  (CSEE E6868, Spring 2026)
+Platform:              xilinx-vcu118-xcvu9p (3x3 ESP grid; SOC_NACC=4, SOC_NMEM=1)
+Bitstream:             top.bit dated 2026-04-07 (no RTL/Tcl changes since)
+NVDLA target:          opendla-small (nv_small), INT8
+ESP base clock:        78 MHz
+Harness:               /examples/monitor_run/monitor_run.exe (built from
+                       esp/soft/common/apps/examples/monitor_run/monitor_run.c
+                       — 23-column CSV including per-NoC-plane injects, full
+                       LLC coh stats, LLC hits/misses, mem-tile DMA stats)
+
+Companion files:
+    measurement_summary.txt          earlier (2026-04-29) ResNet-18 4-data-point
+                                     study; this document supersedes its
+                                     interpretation but keeps the raw numbers
+    intra_parallel/gen_resnet18.py   generator (used 2026-04-29 study)
+    intra_parallel/gen_roofline.py   generator (today's roofline sweep)
+    intra_parallel/sweep_roofline.sh on-target driver
+    intra_parallel/plot_roofline.py  host-side analysis + roofline plot
+    soft-build/.../sysroot/root/resnet18/verify.sh   per-layer correctness check
+    intra_parallel/roofline_plots/derived.csv        per-config derived metrics
+
+Conventions used throughout:
+  acc_tot_cycles    cycles the NVDLA tile FSM was non-idle (start..done).
+                    Independent of host-side overhead — pure HW activity window.
+  acc_mem_cycles    subset of acc_tot when the FSM was in a memory state
+                    (DMA in flight). NOT bytes; cycles.
+  compute cycles    = acc_tot - acc_mem.  Cycles where the tile was NOT in
+                    a memory state.
+  mem-bound %       = 100 * acc_mem / acc_tot.
+  ddr_words         off-chip DRAM word transfers (assumed 8 B/word, sum across
+                    SOC_NMEM=1 memory tiles).
+  AI_dense          analytical arithmetic intensity, ops_int8 / dense_bytes
+                    (weights + input + output, INT8 = 1 byte each).
+  AI_dram           empirical arithmetic intensity, ops_int8 / (8 * ddr_words).
+  ops_int8          2 * MAC count (each MAC = 1 mul + 1 add).
+  HW peak compute   nv_small INT8: 64 MAC/cycle * 2 = 128 ops/cycle.
+                    At 78 MHz: 9.98 GOPS (5 GMAC/s).
+  HW peak DRAM BW   inferred from the highest measured value across the sweep:
+                    75.04 B/cycle => 5.85 GB/s at 78 MHz.
+
+================================================================================
+A) CORRECTNESS VERIFICATION OF RESNET-18 OUTPUT-CHANNEL SPLIT  (verify.sh)
+================================================================================
+Method
+------
+For each of the 11 distinct ResNet-18 conv shapes, re-ran with --rawdump:
+    1) baseline: full layer on instance 0
+    2) 4-way O-channel split: 4 instances run in parallel
+       (split sizes: full_C_out / 4)
+
+Then concatenated the 4 split output.dimg files and md5'd against the full
+output.dimg. The on-target busybox lacks `cmp`/`diff`, so the comparison uses
+md5sum after whitespace normalization (verify.sh, fix applied this session).
+
+Result (minicom-May6.cap lines 8395-8407)
+-----------------------------------------
+Layer         Output values   Result
+conv1         802,816         PASS
+layer1_3x3    200,704         PASS
+layer2_0_3x3  100,352         PASS
+layer2_0_ds   100,352         PASS
+layer2_3x3    100,352         PASS
+layer3_0_3x3   50,176         PASS
+layer3_0_ds    50,176         PASS
+layer3_3x3     50,176         PASS
+layer4_0_3x3   25,088         PASS
+layer4_0_ds    25,088         PASS
+layer4_3x3     25,088         PASS
+
+PASS = 11   FAIL = 0   SKIP = 0    (all 11 layers bit-exact)
+
+Determinism check (line 8264-8373)
+----------------------------------
+md5sum of layer4_3x3_full output.dimg run twice in a row:
+    3fae8c2f83181d3827916989b0644101    (run 1)
+    3fae8c2f83181d3827916989b0644101    (run 2)
+=> Input + execution are deterministic between runs (input buffers
+   apparently zero-initialized by the kernel allocator). Verification is
+   meaningful.
+
+Output-element counts confirm the expected ResNet-18 shapes:
+    conv1       64*112*112 = 802,816  ok
+    layer1_3x3  64* 56* 56 = 200,704  ok
+    layer2_*   128* 28* 28 = 100,352  ok
+    layer3_*   256* 14* 14 =  50,176  ok
+    layer4_*   512*  7*  7 =  25,088  ok
+
+Implication
+-----------
+The output-channel split implemented by gen_resnet18.py is mathematically
+sound (concat of 4 splits == full, bit-exact). All timing measurements taken
+on these same loadables (the 2026-04-29 4-data-point study + any future runs)
+are operating on correct compute, not garbage.
+
+================================================================================
+B) RESNET-18 4-DATA-POINT TIMING STUDY      (already in measurement_summary.txt)
+================================================================================
+Recap of the prior numbers (verified by verify.sh above):
+
+Layer/mode                           acc_tot       acc_mem      mem-bound
+conv1 baseline (1 tile)              22,947,319   22,947,313   99.99997%
+conv1 4-way O-split max (1 of 4)     75,406,419   75,406,413   99.99999%
+layer4_3x3 baseline (1 tile)          9,703,738    9,703,736   99.99998%
+layer4_3x3 4-way O-split max          31,092,077   31,092,076  ~100%
+
+Hardware-cycle "speedup" (excluding host overhead) of 4-way O-split:
+    conv1       :  cycles_max / cycles_baseline = 75.40M / 22.95M = 3.29x slower
+    layer4_3x3  :                                31.09M /  9.70M = 3.20x slower
+
+Both layers degraded by ~3.2-3.3x per tile under 4-way parallelism, regardless
+of whether the layer was activation-heavy (conv1) or weight-heavy (layer4_3x3).
+This was the original "negative speedup" observation. The roofline + 4-indep
+data below explain *why*.
+
+================================================================================
+C) ROOFLINE SWEEP — single-tile, 27 distinct conv shapes
+================================================================================
+Method
+------
+gen_roofline.py emitted 30 single-conv loadables across 7 sweep groups
+spanning AI_dense from 49 to 664 ops/byte. Three configs failed nvdla_compiler
+(vc_c512, as_in512_out8, as_in512_out64 — likely nv_small atomic-K constraints
+at C_out=8 or shape-too-large), leaving 27 measured configurations.
+
+Each config was run on instance 0, wrapped by monitor_run.exe; CSV captured
+in minicom-May6-3.cap and post-processed by plot_roofline.py.
+Source: roofline_plots/derived.csv  (lines verbatim below).
+
+Inferred ceilings
+-----------------
+peak compute   = 128.0 ops/cycle    (fixed; nv_small INT8 = 64 MAC * 2 ops)
+peak DRAM BW   =  75.04 B/cycle     (highest measured: as_in3_out512)
+                                    => 5.85 GB/s at 78 MHz
+peak NoC BW    =   ~0  B/cycle      (NoC inject counters did not fire on
+                                     NVDLA tiles in this bitstream — see
+                                     section E note 2)
+
+Per-config table (sorted by AI_dense)
+-------------------------------------
+
+tag             group       AI_dense AI_dram ops/cy dramB/cy mem%   class
+ob_in3_h224     output_h      49.35   0.123    4.00   32.64  100.0  memory-stall
+as_in3_out512   asymmetric    53.23   0.125    9.39   75.04  100.0  dram         <- only config at peak BW
+vk_k1           vary_k        55.02   0.091    0.21    2.30  100.0  latency-stall
+wb_h7_c512_k1   weight_h      82.26   0.929    3.29    3.54  100.0  latency-stall
+vh_h007         vary_h        83.75   0.250    0.47    1.87  100.0  latency-stall
+ref_layer4      reference     95.96   3.593   23.89    6.65  100.0  latency-stall
+wb_h7_c512_k3   weight_h      95.96   3.593   23.88    6.65  100.0  latency-stall
+as_in8_out512   asymmetric   104.12   0.261    1.85    7.09  100.0  latency-stall
+vc_c016         vary_c       105.31   0.065    0.12    1.80  100.0  latency-stall
+ob_in8_h112     output_h     127.35   0.328   14.09   43.00  100.0  memory-stall
+vc_c032         vary_c       166.02   0.236    0.47    1.99  100.0  latency-stall
+wb_h14_c512_k1  weight_h     222.02   1.736   12.86    7.41  100.0  latency-stall
+ob_in16_h56     output_h     222.24   0.591    7.49   12.66  100.0  latency-stall
+vh_h014         vary_h       233.26   0.792    1.87    2.36  100.0  latency-stall
+vc_c064         vary_c       233.26   0.786    1.87    2.38  100.0  latency-stall
+vk_k3           vary_k       233.26   0.790    1.88    2.38  100.0  latency-stall
+ref_conv1       reference    245.16   0.641   10.27   16.02  100.0  latency-stall
+vc_c128         vary_c       292.48   2.241    7.44    3.32  100.0  latency-stall
+vk_k5           vary_k       314.86   2.074    5.19    2.50  100.0  latency-stall
+ref_layer3      reference    335.00   5.232   26.20    5.01  100.0  latency-stall
+vc_c256         vary_c       335.00   5.227   26.14    5.00  100.0  latency-stall
+vk_k7           vary_k       348.44   3.730   10.20    2.73  100.0  latency-stall
+vh_h028         vary_h       421.25   1.676    7.42    4.43  100.0  latency-stall
+ref_layer1      reference    527.55   2.243   14.34    6.40  100.0  latency-stall
+vh_h056         vary_h       527.55   2.244   14.20    6.33  100.0  latency-stall
+vh_h112         vary_h       563.07   2.404   26.28   10.93  100.0  latency-stall
+ref_layer2      reference    664.09   4.031   26.32    6.53  100.0  latency-stall
+
+Headline observations
+---------------------
+1. EVERY config is ~100% memory-bound (acc_mem == acc_tot within <=8 cycles).
+   Holds across an arithmetic-intensity range of 49 -> 664 ops/byte.
+
+2. The compute ceiling (128 ops/cy) is UNREACHABLE on this SoC.
+   Best achieved: ref_layer2 = 26.32 ops/cy = 20.6% of peak.
+   Worst:         vc_c016    = 0.12  ops/cy = 0.09% of peak.
+
+3. DRAM utilization varies 40x ACROSS 100%-memory-bound configs:
+   from 1.80 B/cy (vc_c016) up to 75.04 B/cy (as_in3_out512).
+   "100% memory-bound" therefore does NOT mean "saturating DRAM";
+   it means the tile FSM is in a memory state every cycle, not that data
+   is moving at the peak rate.
+
+4. Output-write-heavy configs achieve the highest DRAM BW:
+        as_in3_out512  (3 -> 512, K=3, 56^2 -> 56^2)   75.04 B/cy   <- peak
+        ob_in8_h112    (8 -> 64,  K=3, 112^2 -> 112^2) 43.00 B/cy
+        ob_in3_h224    (3 -> 32,  K=3, 224^2 -> 224^2) 32.64 B/cy
+   These have small input + small weights + LARGE output. Output writes
+   are sequential, batchable, latency-tolerant — DMA can pipeline them.
+
+5. Spatial-size sweep (vary_h, fixed C=64, K=3, varying H) shows
+   monotonic DRAM BW improvement with H:
+        H=  7:   1.87 B/cy   ops/cy =  0.47
+        H= 14:   2.36 B/cy   ops/cy =  1.87
+        H= 28:   4.43 B/cy   ops/cy =  7.42
+        H= 56:   6.33 B/cy   ops/cy = 14.20
+        H=112:  10.93 B/cy   ops/cy = 26.28
+   Bigger spatial -> bigger sequential bursts -> DMA amortizes per-request
+   round-trip latency over more bytes. Direct evidence for the "latency-
+   bound" interpretation.
+
+6. Reproducibility check across sweep groups: the same shape (C_in=C_out=64,
+   K=3, H=14) appears as vh_h014, vc_c064, vk_k3:
+        vh_h014:  acc_tot = 7,737,428   dramB/cy = 2.359
+        vc_c064:  acc_tot = 7,733,217   dramB/cy = 2.376
+        vk_k3:    acc_tot = 7,695,939   dramB/cy = 2.375
+   Within 1% across all measurements. Run-to-run variance is low.
+
+7. AI_dram is much smaller than AI_dense in every case. For example
+   ref_layer4: AI_dense=95.96, AI_dram=3.59 — 27x amplification of memory
+   traffic relative to algorithmic minimum. The tile's CBUF cannot hold the
+   working set, so each useful byte is fetched from DRAM many times.
+
+8. LLC hit% = 0 across every config (this is consistent with the earlier
+   ResNet runs; it is not new in the roofline data). NVDLA in this bitstream
+   either uses a non-coherent DMA path that bypasses the LLC accounting
+   counters, or the LLC stats wires aren't connected to NVDLA-originated
+   traffic. mem_coh_reqs IS non-zero, dominated by CPU/UMD-side coherent
+   traffic from nvdla_runtime.
+
+Diagnostic interpretation
+-------------------------
+The platform is MEMORY-ACCESS-LATENCY bound, not bandwidth-bound, in the
+common case. A real bandwidth ceiling exists at ~75 B/cy = 5.85 GB/s, but it
+is reached only by workloads whose memory access pattern is sequential and
+deeply pipelinable (output-write-heavy convs). Most workloads see 2-10 B/cy
+because each NVDLA memory request pays a long round trip
+(NoC -> memory tile -> LLC/DMA -> DRAM controller -> response NoC), and
+NVDLA's per-tile DMA engine cannot keep enough requests in flight to
+amortize that latency.
+
+================================================================================
+D) MULTI-TILE CONTENTION TEST — 4 INDEPENDENT COPIES
+================================================================================
+Method
+------
+For 3 representative configs (one per regime), launched 4 copies of the SAME
+loadable on instances 0..3 in parallel inside ONE monitor_run window. This
+isolates the platform's multi-tile contention from any partitioning-strategy
+question (the copies do redundant work; no split, no merge).
+
+Source: minicom-May6-4.cap lines 436-441, 860-865, 1592-1597.
+
+Submit times (host wall-clock per tile, from minicom-May6-4.cap)
+----------------------------------------------------------------
+config              tile 0    tile 1    tile 2    tile 3    max
+as_in3_out512_4indep 6.842 s   6.760 s   6.841 s   6.832 s   6.842 s
+ref_layer4_4indep    6.804     6.779     6.800     6.794     6.804
+vh_h056_4indep      12.304    12.297    12.303    12.309    12.309
+
+Hardware-cycle metrics (per tile, from monitor_run CSV)
+-------------------------------------------------------
+
+config              tile  acc_tot      acc_mem      compute  ddr_words
+as_in3_out512_4indep  0   32,619,632   32,619,630      2     <-- 350,194,764
+                      1   32,450,052   32,450,050      2          aggregate,
+                      2   32,679,208   32,679,206      2          shared
+                      3   32,469,177   32,469,175      2          across all 4
+                                       max acc_tot = 32,679,208
+ref_layer4_4indep     0   33,780,094   33,780,092      2     <-- 31,997,983
+                      1   34,585,556   34,585,554      2          aggregate
+                      2   34,495,729   34,495,726      3
+                      3   34,438,525   34,438,522      3
+                                       max acc_tot = 34,585,556
+vh_h056_4indep        0   62,840,384   62,840,380      4     <-- 51,746,381
+                      1   62,563,359   62,563,355      4          aggregate
+                      2   63,030,476   63,030,472      4
+                      3   63,050,225   63,050,221      4
+                                       max acc_tot = 63,050,225
+
+Side-by-side with single-tile baseline (from roofline derived.csv)
+------------------------------------------------------------------
+
+config            single-tile        4-indep max         per-tile       DDR
+                  acc_tot   ddr_w    acc_tot   ddr_w     SLOWDOWN       ratio
+as_in3_out512    9,235,670  86.6M  32,679,208  350.2M    3.54x          4.04x
+ref_layer4       9,679,317   8.0M  34,585,556   32.0M    3.57x          3.98x
+vh_h056         16,277,874  12.9M  63,050,225   51.7M    3.87x          4.02x
+
+DRAM throughput comparison
+--------------------------
+
+config            single-tile BW    4-indep aggregate BW    aggregate / single
+                  (B/cy)            (= 8*ddr/cycles, B/cy)  (factor)
+as_in3_out512     75.04             85.7                    1.14x
+ref_layer4         6.65              7.40                   1.11x
+vh_h056            6.33              6.57                   1.04x
+
+Per-tile bandwidth share in 4-indep mode
+        as_in3_out512  85.7 / 4 = 21.4 B/cy/tile  (28.6% of single-tile peak)
+        ref_layer4      7.40 / 4 =  1.85 B/cy/tile (27.8% of single-tile peak)
+        vh_h056         6.57 / 4 =  1.64 B/cy/tile (25.9% of single-tile peak)
+
+Headline observations
+---------------------
+1. Per-tile slowdown is ~3.5-3.9x ACROSS ALL THREE REGIMES — including the
+   one (ref_layer4, vh_h056) that had ~10% DRAM utilization at single-tile.
+   The previous interpretation that "splitting amplifies activation
+   duplication" is at most a partial cause: redundant non-overlapping work
+   shows the same 3.5x-class slowdown.
+
+2. Per-tile DDR traffic in 4-indep mode is exactly 4x baseline (DDR ratio
+   ~4.0x in all cases) — each tile fetches the same data independently.
+   The LLC absorbs almost none of the inter-tile redundancy.
+
+3. Aggregate SoC DRAM throughput in 4-indep mode is essentially the same
+   as single-tile peak:
+        as_in3_out512:  +14.3% over single-tile peak (already at the BW knee)
+        ref_layer4   :  +11.3%
+        vh_h056      :   +3.7%
+   The system delivers ~1x single-tile aggregate throughput regardless of
+   how many tiles are running.
+
+4. Per-tile compute cycles in 4-indep mode are still 2-4 cycles
+   (acc_tot - acc_mem). Memory-bound character is unchanged; only the
+   per-tile time-in-memory-state expands.
+
+5. Combined with the ResNet-18 4-way O-channel split data (3.20-3.29x
+   per-tile slowdown), the picture is consistent: ANY 4-tile parallelism
+   pattern on this SoC pays a ~3.5x per-tile slowdown.
+
+================================================================================
+E) UNIFIED STORY FOR THE REPORT
+================================================================================
+1. Single-tile, single-layer is ~100% memory-bound on every workload tested
+   (resnet18 study, roofline study). Best compute utilization observed:
+   20.6% of peak (ref_layer2). Most layers: <10% of peak.
+
+2. The DRAM port itself is not the binder for most workloads. Only
+   output-write-heavy convs reach the ~5.85 GB/s ceiling. The general
+   bottleneck is MEMORY ACCESS LATENCY — each NVDLA request round-trips
+   through NoC + memory tile + LLC/DMA + DRAM controller, and the per-tile
+   DMA engine cannot keep enough requests in flight to amortize the latency.
+   Evidence: vary_h sweep shows DRAM BW grows linearly with output spatial
+   size as the DMA gains larger sequential bursts to pipeline.
+
+3. The 4-tile multi-instance regime hits a hard wall: aggregate SoC
+   throughput is essentially capped at single-tile throughput (1.04x-1.14x
+   in the 4-indep test). Per-tile slowdown is ~3.5x-3.9x across all
+   workloads — bandwidth-saturating AND latency-stalled alike. The
+   contention is at the shared memory-tile interface, not at the DRAM
+   controller. Adding more memory tiles (SOC_NMEM > 1) is the architectural
+   change that would relax this binder.
+
+4. Implication for "intra-layer parallelism" framing: NO output-channel
+   split (or any other tile-level split) will yield speedup until the
+   memory subsystem is widened. The negative speedup observed in the 4-way
+   ResNet-18 study (~0.30x) is now explained: the ResNet 4-way split
+   penalty is the same ~3.5x per-tile slowdown observed for unrelated
+   independent workloads. Output-channel split's input-duplication penalty
+   is real but secondary; the dominant factor is platform contention
+   independent of the partitioning strategy.
+
+5. Software-overhead contribution is large but separable: submit() time is
+   ~5x-15x larger than acc_tot at clock rate (e.g. conv1 submit = 5.79 s,
+   acc_tot at 78 MHz = ~0.29 s). The ~5.5 s gap is host-side work on the
+   slow Ariane: loadable parsing, DMA buffer alloc, weight memcpy, register
+   programming over NoC, IRQ wait. Hardware-cycle metrics from libmonitors
+   (acc_tot, acc_mem, ddr_words) are the right basis for any performance
+   claim; submit-time wall-clock conflates HW performance with single-CPU
+   software cost.
+
+================================================================================
+F) METHODOLOGY NOTES
+================================================================================
+- All single-tile and 4-indep runs use unmodified loadables from
+  intra_parallel/roofline_out/<tag>/<tag>.nvdla and
+  soft-build/.../sysroot/root/resnet18/<dir>/<dir>.nvdla.
+  These are the SAME files used in the prior 2026-04-29 timing study and
+  in the 2026-05-06 verify.sh correctness check.
+- Rawdump is OFF for timing runs (host overhead), ON for verify.sh runs.
+  Rawdump does not change what NVDLA executes; only the post-completion
+  output read-back into a text file.
+- All counters come from libmonitors.c via memory-mapped reads of ESP per-
+  tile monitor blocks. acc_tot/acc_mem are 64-bit (lo+hi composed in
+  monitor_run.c). NoC inject counters did NOT fire for NVDLA tiles in this
+  bitstream — fields noc_inject_p0..p5 are typically 0 or single digits.
+  This appears to be a wrapper-level instrumentation gap; the tile's NoC
+  monitors are present but not driven by NVDLA-originated DMA.
+- mem_coh_reqs is non-zero (~10^8 range) but mostly reflects CPU/UMD
+  coherent traffic from nvdla_runtime, not NVDLA tile activity.
+- 3 of 30 planned roofline configs failed nvdla_compiler:
+  vc_c512, as_in512_out8, as_in512_out64. Likely nv_small atomic-K
+  constraints at C_out=8 or unusual shape combinations. Not blocking.
+
+================================================================================
+G) ARTIFACTS PRODUCED OR UPDATED TODAY (2026-05-06)
+================================================================================
+Created:
+  intra_parallel/results_summary_2026-05-06.txt  (this file)
+  intra_parallel/gen_roofline.py                 30-config roofline generator
+  intra_parallel/sweep_roofline.sh               on-target sweep driver
+  intra_parallel/plot_roofline.py                host-side roofline analysis
+  intra_parallel/roofline_out/<tag>/             27 successful loadables
+  intra_parallel/roofline_plots/derived.csv      27 derived per-config rows
+  intra_parallel/roofline_plots/roofline_dram.png  roofline plot (DRAM)
+  intra_parallel/roofline_plots/roofline_noc.png   roofline plot (NoC) - empty
+  soft-build/.../sysroot/root/resnet18/verify.sh on-target correctness checker
+
+Modified:
+  soft/common/apps/examples/monitor_run/monitor_run.c
+      9-column CSV -> 23-column CSV (added per-NoC-plane injects, full LLC
+      coh stats, LLC hits/misses, mem-tile DMA stats).
+      Statically linked (LDFLAGS += -static) to bypass the GLIBC_2.26 SYMVER
+      mismatch between /opt/riscv (GCC 8.3.0) and the target's glibc 2.27
+      baseline.
+
+Captured:
+  minicom-May6.cap     verify.sh run (PASS=11)
+  minicom-May6-3.cap   roofline single-tile sweep (27 configs)
+  minicom-May6-4.cap   4-indep contention test (3 configs)
+
+================================================================================
+END OF SUMMARY
+================================================================================

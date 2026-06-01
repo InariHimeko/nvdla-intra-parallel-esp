@@ -1,0 +1,259 @@
+ESP-Ariane boot loader
+
+
+OpenSBI v0.6
+   ____                    _____ ____ _____
+  / __ \                  / ____|  _ \_   _|
+ | |  | |_ __   ___ _ __ | (___ | |_) || |
+ | |  | | '_ \ / _ \ '_ \ \___ \|  _ < | |
+ | |__| | |_) |  __/ | | |____) | |_) || |_
+  \____/| .__/ \___|_| |_|_____/|____/_____|
+        | |
+        |_|
+
+Platform Name          : ESP+ARIANE RISC-V
+Platform HART Features : RV64ACDFIMSU
+Platform Max HARTs     : 16
+Current Hart           : 0
+Firmware Base          : 0x80000000
+Firmware Size          : 120 KB
+Runtime SBI Version    : 0.2
+
+MIDELEG : 0x0000000000000222
+MEDELEG : 0x000000000000b109
+[    0.000000] OF: fdt: Ignoring memory range 0x80000000 - 0x80200000
+[    0.000000] Linux version 5.1.0-gb842fcc582e0-dirty (wx2341@thecaptain) (gcc version 8.3.0 (GCC)) #40 PREEMPT Wed May 6 21:41:13 EDT 2026
+[    0.000000] earlycon: sbi0 at I/O port 0x0 (options '')
+[    0.000000] printk: bootconsole [sbi0] enabled
+[    0.000000] initrd not found or empty - disabling initrd
+[    0.000000] Reserved memory: created DMA memory pool at 0x00000000a0000000, size 2 MiB
+[    0.000000] OF: reserved mem: initialized node buffer@a0000000, compatible id shared-dma-pool
+[    0.000000] Reserved memory: created DMA memory pool at 0x00000000a0200000, size 510 MiB
+[    0.000000] OF: reserved mem: initialized node buffer@a0200000, compatible id shared-dma-pool
+[    0.000000] Zone ranges:
+[    0.000000]   DMA32    [mem 0x0000000080200000-0x000000009fffffff]
+[    0.000000]   Normal   empty
+[    0.000000] Movable zone start for each node
+[    0.000000] Early memory node ranges
+[    0.000000]   node   0: [mem 0x0000000080200000-0x000000009fffffff]
+[    0.000000] Initmem setup node 0 [mem 0x0000000080200000-0x000000009fffffff]
+[    0.000000] software IO TLB: mapped [mem 0x9b8fc000-0x9f8fc000] (64MB)
+[    0.000000] elf_hwcap is 0x112d
+[    0.000000] Built 1 zonelists, mobility grouping on.  Total pages: 128775
+[    0.000000] Kernel command line: earlyprintk earlycon=sbi
+[    0.000000] Dentry cache hash table entries: 65536 (order: 7, 524288 bytes)
+[    0.000000] Inode-cache hash table entries: 32768 (order: 6, 262144 bytes)
+[    0.000000] Sorting __ex_table...
+[    0.000000] Memory: 369440K/522240K available (3908K kernel code, 226K rwdata, 1152K rodata, 72792K init, 794K bss, 152800K reserved, 0K cma-reserved)
+[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+[    0.000000] NR_IRQS: 0, nr_irqs: 0, preallocated irqs: 0
+[    0.000000] plic: mapped 16 interrupts with 1 handlers for 2 contexts.
+[    0.000000] riscv_timer_init_dt: Registering clocksource cpuid [0] hartid [0]
+[    0.000000] clocksource: riscv_clocksource: mask: 0xffffffffffffffff max_cycles: 0x9024e6a0b, max_idle_ns: 440795202745 ns
+[    0.000223] sched_clock: 64 bits at 39MHz, resolution 25ns, wraps every 4398046511103ns
+[    0.032971] printk: console [ttyS0] enabled
+[    0.032971] printk: console [ttyS0] enabled
+[    0.058222] printk: bootconsole [sbi0] disabled
+[    0.058222] printk: bootconsole [sbi0] disabled
+[    0.086118] Calibrating delay loop (skipped), value calculated using timer frequency.. 78.12 BogoMIPS (lpj=390625)
+[    0.124753] pid_max: default: 32768 minimum: 301
+[    0.147119] Mount-cache hash table entries: 1024 (order: 1, 8192 bytes)
+[    0.167675] Mountpoint-cache hash table entries: 1024 (order: 1, 8192 bytes)
+[    0.205164] *** VALIDATE proc ***
+[    0.247273] devtmpfs: initialized
+[    0.287291] random: get_random_bytes called from setup_net+0x32/0x150 with crng_init=0
+[    0.317591] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 19112604462750000 ns
+[    0.348149] futex hash table entries: 256 (order: 0, 6144 bytes)
+[    0.375845] NET: Registered protocol family 16
+[    0.570095] usbcore: registered new interface driver usbfs
+[    0.588570] usbcore: registered new interface driver hub
+[    0.606805] usbcore: registered new device driver usb
+[    0.639424] clocksource: Switched to clocksource riscv_clocksource
+[    0.691420] NET: Registered protocol family 2
+[    0.724669] tcp_listen_portaddr_hash hash table entries: 256 (order: 0, 4096 bytes)
+[    0.751663] TCP established hash table entries: 4096 (order: 3, 32768 bytes)
+[    0.775292] TCP bind hash table entries: 4096 (order: 3, 32768 bytes)
+[    0.797059] TCP: Hash tables configured (established 4096 bind 4096)
+[    0.819151] UDP hash table entries: 256 (order: 1, 8192 bytes)
+[    0.838007] UDP-Lite hash table entries: 256 (order: 1, 8192 bytes)
+[    0.862779] NET: Registered protocol family 1
+[    0.888243] RPC: Registered named UNIX socket transport module.
+[    0.907296] RPC: Registered udp transport module.
+[    0.921972] RPC: Registered tcp transport module.
+[    0.936433] RPC: Registered tcp NFSv4.1 backchannel transport module.
+[  109.237401] workingset: timestamp_bits=62 max_order=17 bucket_order=0
+[  109.538436] NFS: Registering the id_resolver key type
+[  109.554726] Key type id_resolver registered
+[  109.567714] Key type id_legacy registered
+[  109.580546] nfs4filelayout_init: NFSv4 File Layout Driver Registering...
+[  109.816709] io scheduler mq-deadline registered
+[  109.832068] io scheduler kyber registered
+[  111.210788] Serial: GRLIB APBUART driver
+[  111.232874] 60000100.uart: ttyS0 at MMIO 0x60000100 (irq = 3, base_baud = 4882812) is a GRLIB/APBUART
+[  111.265347] grlib-apbuart at 0x60000100, irq 3
+[  111.291988] libphy: Fixed MDIO Bus: probed
+[  111.325487] libphy: greth-mdio: probed
+[  113.168040] grlib-greth 60080000.greth: assigned reserved memory node buffer@a0000000
+[  113.205780] ehci_hcd: USB 2.0 'Enhanced' Host Controller (EHCI) Driver
+[  113.237511] usbcore: registered new interface driver usbhid
+[  113.254954] usbhid: USB HID core driver
+[  113.291252] NET: Registered protocol family 10
+[  113.330697] Segment Routing with IPv6
+[  113.344217] sit: IPv6, IPv4 and MPLS over IPv4 tunneling driver
+[  113.378528] NET: Registered protocol family 17
+[  113.397108] Key type dns_resolver registered
+[  114.586344] Freeing unused kernel memory: 72792K
+[  114.600777] This architecture does not have kernel memory protection.
+[  114.620552] Run /init as init process
+mount: mounting devpts on /dev/pts failed: No such device
+Starting syslogd: OK
+Starting klogd: OK
+Running sysctl: OK
+Saving random seed: [  118.086944] random: dd: uninitialized urandom read (512 bytes read)
+OK
+Starting haveged: haveged: command socket is listening at fd 3
+OK
+Starting network: udhcpc: started, v1.33.0
+udhcpc: sending discover
+udhcpc: sending discover
+udhcpc: sending discover
+udhcpc: no lease, failing
+FAIL
+Starting dropbear sshd: OK
+[  135.483533] contig_alloc: loading out-of-tree module taints kernel.
+[  140.125513] Probe NVDLA config nvidia,nv_small
+[  140.182616] [drm] Initialized nvdla 0.0.0 20171017 for 60400000.nv_nvdla on minor 0
+[  140.289359] 0 . 12 . 5
+[  140.307099] reset engine done
+[  140.342009] Probe NVDLA config nvidia,nv_small
+[  140.393812] [drm] Initialized nvdla 0.0.0 20171017 for 60500000.nv_nvdla on minor 1
+[  140.500369] 0 . 12 . 5
+[  140.507487] reset engine done
+[  140.541998] Probe NVDLA config nvidia,nv_small
+[  140.594094] [drm] Initialized nvdla 0.0.0 20171017 for 60600000.nv_nvdla on minor 2
+[  140.710452] 0 . 12 . 5
+[  140.717564] reset engine done
+[  140.752019] Probe NVDLA config nvidia,nv_small
+[  140.799377] [drm] Initialized nvdla 0.0.0 20171017 for 60700000.nv_nvdla on minor 3
+[  140.920296] 0 . 12 . 5
+[  140.927408] reset engine done
+vitdodec_stratus 2907 0 - Live 0xffffffd00443d000 (O)
+vitbfly2_stratus 2779 0 - Live 0xffffffd004436000 (O)
+synth_stratus 3020 0 - Live 0xffffffd00442f000 (O)
+svd_vivado 2946 0 - Live 0xffffffd004428000 (O)
+spmv_stratus 3045 0 - Live 0xffffffd004421000 (O)
+sort_stratus 3008 0 - Live 0xffffffd00441a000 (O)
+sinkhorn_stratus 2971 0 - Live 0xffffffd004413000 (O)
+opendla 136796 0 - Live 0xffffffd0042be000 (O)
+nightvision_stratus 3014 0 - Live 0xffffffd004299000 (O)
+mriq_stratus 2887 0 - Live 0xffffffd004292000 (O)
+mac_sysc_catapult 2882 0 - Live 0xffffffd00428b000 (O)
+gemm_stratus 2951 0 - Live 0xffffffd004284000 (O)
+fft_stratus 2882 0 - Live 0xffffffd00407a000 (O)
+fft2_stratus 2887 0 - Live 0xffffffd004073000 (O)
+dummy_stratus 2892 0 - Live 0xffffffd00406c000 (O)
+crypto_cxx_catapult 3025 0 - Live 0xffffffd004065000 (O)
+conv2d_stratus 2961 0 - Live 0xffffffd00405e000 (O)
+cholesky_stratus 2843 0 - Live 0xffffffd004057000 (O)
+adder_vivado 2828 0 - Live 0xffffffd004050000 (O)
+esp 10494 18 vitdodec_stratus,vitbfly2_stratus,synth_stratus,svd_vivado,spmv_stratus,sort_stratus,sinkhorn_stratus,nightvision_stratus,mriq_stratus,mac_sysc_catapult,gemm_stratus,fft_stratus,fft2_stratus,dummy_stratus,crypto_cxx_catapult,conv2d_stratus,cholesky_stratus,adder_vivado, Live 0xffffffd004045000 (O)
+esp_private_cache 4895 1 esp, Live 0xffffffd004038000 (O)
+esp_cache 4492 1 esp, Live 0xffffffd004031000 (O)
+contig_alloc 10890 1 esp, Live 0xffffffd004009000 (O)
+chpasswd: password for 'root' changed
+
+Welcome to ESP
+esp login: [  198.938355] random: crng init done
+root
+Password: 
+# cd /root/roofline && ./sweep_roofline.sh single
+============================================================
+ Roofline sweep (mode=single)
+============================================================
+
+--- [1] ref_conv1  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ref_conv1/ref_conv1.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ref_conv1/ref_conv1.nvdla not found)
+
+--- [2] ref_layer1  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ref_layer1/ref_layer1.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ref_layer1/ref_layer1.nvdla not found)
+
+--- [3] ref_layer2  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ref_layer2/ref_layer2.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ref_layer2/ref_layer2.nvdla not found)
+
+--- [4] ref_layer3  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ref_layer3/ref_layer3.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ref_layer3/ref_layer3.nvdla not found)
+
+--- [5] ref_layer4  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ref_layer4/ref_layer4.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ref_layer4/ref_layer4.nvdla not found)
+
+--- [6] vh_h007  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vh_h007/vh_h007.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vh_h007/vh_h007.nvdla not found)
+
+--- [7] vh_h014  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vh_h014/vh_h014.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vh_h014/vh_h014.nvdla not found)
+
+--- [8] vh_h028  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vh_h028/vh_h028.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vh_h028/vh_h028.nvdla not found)
+
+--- [9] vh_h056  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vh_h056/vh_h056.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vh_h056/vh_h056.nvdla not found)
+
+--- [10] vh_h112  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vh_h112/vh_h112.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vh_h112/vh_h112.nvdla not found)
+
+--- [11] vc_c016  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vc_c016/vc_c016.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vc_c016/vc_c016.nvdla not found)
+
+--- [12] vc_c032  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vc_c032/vc_c032.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vc_c032/vc_c032.nvdla not found)
+
+--- [13] vc_c064  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vc_c064/vc_c064.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vc_c064/vc_c064.nvdla not found)
+
+--- [14] vc_c128  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vc_c128/vc_c128.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vc_c128/vc_c128.nvdla not found)
+
+--- [15] vc_c256  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vc_c256/vc_c256.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vc_c256/vc_c256.nvdla not found)
+
+--- [16] vk_k1  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vk_k1/vk_k1.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vk_k1/vk_k1.nvdla not found)
+
+--- [17] vk_k3  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vk_k3/vk_k3.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vk_k3/vk_k3.nvdla not found)
+
+--- [18] vk_k5  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vk_k5/vk_k5.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vk_k5/vk_k5.nvdla not found)
+
+--- [19] vk_k7  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vk_k7/vk_k7.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vk_k7/vk_k7.nvdla not found)
+
+--- [20] as_in3_out512  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/as_in3_out512/as_in3_out512.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/as_in3_out512/as_in3_out512.nvdla not found)
+
+--- [21] as_in8_out512  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/as_in8_out512/as_in8_out512.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/as_in8_out512/as_in8_out512.nvdla not found)
+
+--- [22] ob_in3_h224  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ob_in3_h224/ob_in3_h224.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ob_in3_h224/ob_in3_h224.nvdla not found)
+
+--- [23] ob_in8_h112  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ob_in8_h112/ob_in8_h112.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ob_in8_h112/ob_in8_h112.nvdla not found)
+
+--- [24] ob_in16_h56  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ob_in16_h56/ob_in16_h56.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ob_in16_h56/ob_in16_h56.nvdla not found)
+
+--- [25] wb_h7_c512_k3  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/wb_h7_c512_k3/wb_h7_c512_k3.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/wb_h7_c512_k3/wb_h7_c512_k3.nvdla not found)
+
+--- [26] wb_h7_c512_k1  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/wb_h7_c512_k1/wb_h7_c512_k1.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/wb_h7_c512_k1/wb_h7_c512_k1.nvdla not found)
+
+--- [27] wb_h14_c512_k1  loadable=/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/wb_h14_c512_k1/wb_h14_c512_k1.nvdla ---
+  (skip: /home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/wb_h14_c512_k1/wb_h14_c512_k1.nvdla not found)
+
+============================================================
+ Sweep complete. Results: /tmp/roofline.csv
+============================================================
+wc: /tmp/roofline.csv: No such file or directory
+# 

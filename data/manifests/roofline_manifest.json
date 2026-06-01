@@ -1,0 +1,623 @@
+[
+  {
+    "tag": "ref_conv1",
+    "group": "reference",
+    "shape": {
+      "c_in": 3,
+      "c_out": 64,
+      "h_in": 224,
+      "h_out": 112,
+      "kernel": 7,
+      "stride": 2,
+      "pad": 3
+    },
+    "metrics": {
+      "macs": 118013952,
+      "ops_int8": 236027904,
+      "weight_bytes": 9408,
+      "input_bytes": 150528,
+      "output_bytes": 802816,
+      "dense_bytes": 962752,
+      "ai_ops_per_byte": 245.15960912052117
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ref_conv1/ref_conv1.nvdla"
+  },
+  {
+    "tag": "ref_layer1",
+    "group": "reference",
+    "shape": {
+      "c_in": 64,
+      "c_out": 64,
+      "h_in": 56,
+      "h_out": 56,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 115605504,
+      "ops_int8": 231211008,
+      "weight_bytes": 36864,
+      "input_bytes": 200704,
+      "output_bytes": 200704,
+      "dense_bytes": 438272,
+      "ai_ops_per_byte": 527.5514018691589
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ref_layer1/ref_layer1.nvdla"
+  },
+  {
+    "tag": "ref_layer2",
+    "group": "reference",
+    "shape": {
+      "c_in": 128,
+      "c_out": 128,
+      "h_in": 28,
+      "h_out": 28,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 115605504,
+      "ops_int8": 231211008,
+      "weight_bytes": 147456,
+      "input_bytes": 100352,
+      "output_bytes": 100352,
+      "dense_bytes": 348160,
+      "ai_ops_per_byte": 664.0941176470589
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ref_layer2/ref_layer2.nvdla"
+  },
+  {
+    "tag": "ref_layer3",
+    "group": "reference",
+    "shape": {
+      "c_in": 256,
+      "c_out": 256,
+      "h_in": 14,
+      "h_out": 14,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 115605504,
+      "ops_int8": 231211008,
+      "weight_bytes": 589824,
+      "input_bytes": 50176,
+      "output_bytes": 50176,
+      "dense_bytes": 690176,
+      "ai_ops_per_byte": 335.00296735905044
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ref_layer3/ref_layer3.nvdla"
+  },
+  {
+    "tag": "ref_layer4",
+    "group": "reference",
+    "shape": {
+      "c_in": 512,
+      "c_out": 512,
+      "h_in": 7,
+      "h_out": 7,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 115605504,
+      "ops_int8": 231211008,
+      "weight_bytes": 2359296,
+      "input_bytes": 25088,
+      "output_bytes": 25088,
+      "dense_bytes": 2409472,
+      "ai_ops_per_byte": 95.9592010199745
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ref_layer4/ref_layer4.nvdla"
+  },
+  {
+    "tag": "vh_h007",
+    "group": "vary_h",
+    "shape": {
+      "c_in": 64,
+      "c_out": 64,
+      "h_in": 7,
+      "h_out": 7,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 1806336,
+      "ops_int8": 3612672,
+      "weight_bytes": 36864,
+      "input_bytes": 3136,
+      "output_bytes": 3136,
+      "dense_bytes": 43136,
+      "ai_ops_per_byte": 83.75074183976261
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vh_h007/vh_h007.nvdla"
+  },
+  {
+    "tag": "vh_h014",
+    "group": "vary_h",
+    "shape": {
+      "c_in": 64,
+      "c_out": 64,
+      "h_in": 14,
+      "h_out": 14,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 7225344,
+      "ops_int8": 14450688,
+      "weight_bytes": 36864,
+      "input_bytes": 12544,
+      "output_bytes": 12544,
+      "dense_bytes": 61952,
+      "ai_ops_per_byte": 233.25619834710744
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vh_h014/vh_h014.nvdla"
+  },
+  {
+    "tag": "vh_h028",
+    "group": "vary_h",
+    "shape": {
+      "c_in": 64,
+      "c_out": 64,
+      "h_in": 28,
+      "h_out": 28,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 28901376,
+      "ops_int8": 57802752,
+      "weight_bytes": 36864,
+      "input_bytes": 50176,
+      "output_bytes": 50176,
+      "dense_bytes": 137216,
+      "ai_ops_per_byte": 421.25373134328356
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vh_h028/vh_h028.nvdla"
+  },
+  {
+    "tag": "vh_h056",
+    "group": "vary_h",
+    "shape": {
+      "c_in": 64,
+      "c_out": 64,
+      "h_in": 56,
+      "h_out": 56,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 115605504,
+      "ops_int8": 231211008,
+      "weight_bytes": 36864,
+      "input_bytes": 200704,
+      "output_bytes": 200704,
+      "dense_bytes": 438272,
+      "ai_ops_per_byte": 527.5514018691589
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vh_h056/vh_h056.nvdla"
+  },
+  {
+    "tag": "vh_h112",
+    "group": "vary_h",
+    "shape": {
+      "c_in": 64,
+      "c_out": 64,
+      "h_in": 112,
+      "h_out": 112,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 462422016,
+      "ops_int8": 924844032,
+      "weight_bytes": 36864,
+      "input_bytes": 802816,
+      "output_bytes": 802816,
+      "dense_bytes": 1642496,
+      "ai_ops_per_byte": 563.072319201995
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vh_h112/vh_h112.nvdla"
+  },
+  {
+    "tag": "vc_c016",
+    "group": "vary_c",
+    "shape": {
+      "c_in": 16,
+      "c_out": 16,
+      "h_in": 14,
+      "h_out": 14,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 451584,
+      "ops_int8": 903168,
+      "weight_bytes": 2304,
+      "input_bytes": 3136,
+      "output_bytes": 3136,
+      "dense_bytes": 8576,
+      "ai_ops_per_byte": 105.31343283582089
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vc_c016/vc_c016.nvdla"
+  },
+  {
+    "tag": "vc_c032",
+    "group": "vary_c",
+    "shape": {
+      "c_in": 32,
+      "c_out": 32,
+      "h_in": 14,
+      "h_out": 14,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 1806336,
+      "ops_int8": 3612672,
+      "weight_bytes": 9216,
+      "input_bytes": 6272,
+      "output_bytes": 6272,
+      "dense_bytes": 21760,
+      "ai_ops_per_byte": 166.0235294117647
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vc_c032/vc_c032.nvdla"
+  },
+  {
+    "tag": "vc_c064",
+    "group": "vary_c",
+    "shape": {
+      "c_in": 64,
+      "c_out": 64,
+      "h_in": 14,
+      "h_out": 14,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 7225344,
+      "ops_int8": 14450688,
+      "weight_bytes": 36864,
+      "input_bytes": 12544,
+      "output_bytes": 12544,
+      "dense_bytes": 61952,
+      "ai_ops_per_byte": 233.25619834710744
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vc_c064/vc_c064.nvdla"
+  },
+  {
+    "tag": "vc_c128",
+    "group": "vary_c",
+    "shape": {
+      "c_in": 128,
+      "c_out": 128,
+      "h_in": 14,
+      "h_out": 14,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 28901376,
+      "ops_int8": 57802752,
+      "weight_bytes": 147456,
+      "input_bytes": 25088,
+      "output_bytes": 25088,
+      "dense_bytes": 197632,
+      "ai_ops_per_byte": 292.47668393782385
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vc_c128/vc_c128.nvdla"
+  },
+  {
+    "tag": "vc_c256",
+    "group": "vary_c",
+    "shape": {
+      "c_in": 256,
+      "c_out": 256,
+      "h_in": 14,
+      "h_out": 14,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 115605504,
+      "ops_int8": 231211008,
+      "weight_bytes": 589824,
+      "input_bytes": 50176,
+      "output_bytes": 50176,
+      "dense_bytes": 690176,
+      "ai_ops_per_byte": 335.00296735905044
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vc_c256/vc_c256.nvdla"
+  },
+  {
+    "tag": "vk_k1",
+    "group": "vary_k",
+    "shape": {
+      "c_in": 64,
+      "c_out": 64,
+      "h_in": 14,
+      "h_out": 14,
+      "kernel": 1,
+      "stride": 1,
+      "pad": 0
+    },
+    "metrics": {
+      "macs": 802816,
+      "ops_int8": 1605632,
+      "weight_bytes": 4096,
+      "input_bytes": 12544,
+      "output_bytes": 12544,
+      "dense_bytes": 29184,
+      "ai_ops_per_byte": 55.01754385964912
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vk_k1/vk_k1.nvdla"
+  },
+  {
+    "tag": "vk_k3",
+    "group": "vary_k",
+    "shape": {
+      "c_in": 64,
+      "c_out": 64,
+      "h_in": 14,
+      "h_out": 14,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 7225344,
+      "ops_int8": 14450688,
+      "weight_bytes": 36864,
+      "input_bytes": 12544,
+      "output_bytes": 12544,
+      "dense_bytes": 61952,
+      "ai_ops_per_byte": 233.25619834710744
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vk_k3/vk_k3.nvdla"
+  },
+  {
+    "tag": "vk_k5",
+    "group": "vary_k",
+    "shape": {
+      "c_in": 64,
+      "c_out": 64,
+      "h_in": 14,
+      "h_out": 14,
+      "kernel": 5,
+      "stride": 1,
+      "pad": 2
+    },
+    "metrics": {
+      "macs": 20070400,
+      "ops_int8": 40140800,
+      "weight_bytes": 102400,
+      "input_bytes": 12544,
+      "output_bytes": 12544,
+      "dense_bytes": 127488,
+      "ai_ops_per_byte": 314.859437751004
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vk_k5/vk_k5.nvdla"
+  },
+  {
+    "tag": "vk_k7",
+    "group": "vary_k",
+    "shape": {
+      "c_in": 64,
+      "c_out": 64,
+      "h_in": 14,
+      "h_out": 14,
+      "kernel": 7,
+      "stride": 1,
+      "pad": 3
+    },
+    "metrics": {
+      "macs": 39337984,
+      "ops_int8": 78675968,
+      "weight_bytes": 200704,
+      "input_bytes": 12544,
+      "output_bytes": 12544,
+      "dense_bytes": 225792,
+      "ai_ops_per_byte": 348.44444444444446
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/vk_k7/vk_k7.nvdla"
+  },
+  {
+    "tag": "as_in3_out512",
+    "group": "asymmetric",
+    "shape": {
+      "c_in": 3,
+      "c_out": 512,
+      "h_in": 56,
+      "h_out": 56,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 43352064,
+      "ops_int8": 86704128,
+      "weight_bytes": 13824,
+      "input_bytes": 9408,
+      "output_bytes": 1605632,
+      "dense_bytes": 1628864,
+      "ai_ops_per_byte": 53.229814152685556
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/as_in3_out512/as_in3_out512.nvdla"
+  },
+  {
+    "tag": "as_in8_out512",
+    "group": "asymmetric",
+    "shape": {
+      "c_in": 8,
+      "c_out": 512,
+      "h_in": 14,
+      "h_out": 14,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 7225344,
+      "ops_int8": 14450688,
+      "weight_bytes": 36864,
+      "input_bytes": 1568,
+      "output_bytes": 100352,
+      "dense_bytes": 138784,
+      "ai_ops_per_byte": 104.1235877334563
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/as_in8_out512/as_in8_out512.nvdla"
+  },
+  {
+    "tag": "ob_in3_h224",
+    "group": "output_h",
+    "shape": {
+      "c_in": 3,
+      "c_out": 32,
+      "h_in": 224,
+      "h_out": 224,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 43352064,
+      "ops_int8": 86704128,
+      "weight_bytes": 864,
+      "input_bytes": 150528,
+      "output_bytes": 1605632,
+      "dense_bytes": 1757024,
+      "ai_ops_per_byte": 49.34715063653086
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ob_in3_h224/ob_in3_h224.nvdla"
+  },
+  {
+    "tag": "ob_in8_h112",
+    "group": "output_h",
+    "shape": {
+      "c_in": 8,
+      "c_out": 64,
+      "h_in": 112,
+      "h_out": 112,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 57802752,
+      "ops_int8": 115605504,
+      "weight_bytes": 4608,
+      "input_bytes": 100352,
+      "output_bytes": 802816,
+      "dense_bytes": 907776,
+      "ai_ops_per_byte": 127.3502538071066
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ob_in8_h112/ob_in8_h112.nvdla"
+  },
+  {
+    "tag": "ob_in16_h56",
+    "group": "output_h",
+    "shape": {
+      "c_in": 16,
+      "c_out": 64,
+      "h_in": 56,
+      "h_out": 56,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 28901376,
+      "ops_int8": 57802752,
+      "weight_bytes": 9216,
+      "input_bytes": 50176,
+      "output_bytes": 200704,
+      "dense_bytes": 260096,
+      "ai_ops_per_byte": 222.23622047244095
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/ob_in16_h56/ob_in16_h56.nvdla"
+  },
+  {
+    "tag": "wb_h7_c512_k3",
+    "group": "weight_h",
+    "shape": {
+      "c_in": 512,
+      "c_out": 512,
+      "h_in": 7,
+      "h_out": 7,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "metrics": {
+      "macs": 115605504,
+      "ops_int8": 231211008,
+      "weight_bytes": 2359296,
+      "input_bytes": 25088,
+      "output_bytes": 25088,
+      "dense_bytes": 2409472,
+      "ai_ops_per_byte": 95.9592010199745
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/wb_h7_c512_k3/wb_h7_c512_k3.nvdla"
+  },
+  {
+    "tag": "wb_h7_c512_k1",
+    "group": "weight_h",
+    "shape": {
+      "c_in": 512,
+      "c_out": 512,
+      "h_in": 7,
+      "h_out": 7,
+      "kernel": 1,
+      "stride": 1,
+      "pad": 0
+    },
+    "metrics": {
+      "macs": 12845056,
+      "ops_int8": 25690112,
+      "weight_bytes": 262144,
+      "input_bytes": 25088,
+      "output_bytes": 25088,
+      "dense_bytes": 312320,
+      "ai_ops_per_byte": 82.25573770491803
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/wb_h7_c512_k1/wb_h7_c512_k1.nvdla"
+  },
+  {
+    "tag": "wb_h14_c512_k1",
+    "group": "weight_h",
+    "shape": {
+      "c_in": 512,
+      "c_out": 512,
+      "h_in": 14,
+      "h_out": 14,
+      "kernel": 1,
+      "stride": 1,
+      "pad": 0
+    },
+    "metrics": {
+      "macs": 51380224,
+      "ops_int8": 102760448,
+      "weight_bytes": 262144,
+      "input_bytes": 100352,
+      "output_bytes": 100352,
+      "dense_bytes": 462848,
+      "ai_ops_per_byte": 222.01769911504425
+    },
+    "loadable": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/roofline_out/wb_h14_c512_k1/wb_h14_c512_k1.nvdla"
+  }
+]

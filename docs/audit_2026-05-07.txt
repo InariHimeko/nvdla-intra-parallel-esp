@@ -1,0 +1,570 @@
+================================================================================
+Audit & corrected conclusions — 2026-05-07
+================================================================================
+Purpose
+-------
+Re-review the data collected on 2026-05-06 in light of three honest gaps that
+became apparent on review:
+  (1) the "DRAM bandwidth" counter actually measures something narrower than
+      I previously claimed,
+  (2) the "NoC bandwidth" plot was constructed from a counter that doesn't
+      fire for NVDLA bulk data,
+  (3) the conclusion that "the NoC is the bottleneck" was an overclaim.
+
+This document REPLACES section E ("Unified story") of
+  results_summary_2026-05-06.txt
+with strictly-defensible language. Everything in sections A–D of that file
+(raw counter readings, hand-derived arithmetic, verify.sh PASS=11) remains
+valid and is not restated here.
+
+================================================================================
+1) WHAT THE COUNTERS ACTUALLY MEASURE
+================================================================================
+Re-traced into the ESP RTL because previous claims about peak DRAM bandwidth
+and NoC bandwidth needed grounding.
+
+1.1  ddr_words  (MON_DDR_WORD_TRANSFER_INDEX)
+---------------------------------------------
+Path:
+    libmonitors.c:76      reads register 0 at the memory tile
+    -> esp_tile_csr.vhd  counter increments while mon_ddr.word_transfer = '1'
+    -> tile_mem.vhd:702-713
+
+  detect_ddr_access : process(ddr_axi_si_temp, ddr_axi_so)
+  begin
+      if this_has_ddr = 1 then
+        mon_ddr.word_transfer <= '0';
+        if ddr_axi_si_temp.w.valid = '1' and ddr_axi_so.w.ready = '1' then
+          mon_ddr.word_transfer <= '1';
+        end if;
+      ...
+
+`ddr_axi_si.w` is the AMBA-AXI WRITE DATA channel (other channels in the same
+record are .aw write-address, .ar read-address, .r read-data, .b write-rsp).
+Same file confirms this naming at lines 627-657.
+
+==> ddr_words counts AXI WRITE-DATA BEATS to the DDR controller. It does NOT
+    count read beats. NVDLA's weight reads, input reads, and intermediate
+    activation reads all go to DRAM but are INVISIBLE to this counter.
+
+==> "Peak DRAM BW = 75.04 B/cycle" is more precisely "peak DRAM WRITE
+    bandwidth = X bytes per cycle, in whatever units one AXI W beat is."
+
+==> The unit per increment is one AXI W beat. Width is implementation-dependent
+    (32, 64, or 128 bits). We have not confirmed it for this bitstream;
+    assuming 64-bit gives 5.85 GB/s, 32-bit gives 2.93 GB/s, 128-bit gives
+    11.7 GB/s. None of the qualitative conclusions below depend on which.
+
+==> Furthermore the AXI port is shared by the CPU and the accelerator tiles;
+    ddr_words is therefore the TOTAL system DRAM write traffic during the
+    monitor window, not NVDLA-specific. Some of the 8 M ddr_words observed
+    for ref_layer4 (whose actual layer output is only 25,088 bytes) is
+    almost certainly CPU-driven cache writebacks during the long
+    nvdla_runtime userspace work.
+
+1.2  noc_inject_p[0..5]  (MON_NOC_TILE_INJECT_BASE_INDEX + plane)
+-----------------------------------------------------------------
+Path:
+    libmonitors.c:117-118   reads registers 23..28 at the tile
+    -> esp_tile_csr.vhd:420-423   counter increments per plane while
+                                  mon_noc(N).tile_inject = '1'
+    -> sync_noc_xy.vhd:151        mon_noc.tile_inject <= not data_void_in(4);
+
+  data_void_in(4) is the LOCAL port of the per-tile NoC router (port 4 in a
+  5-port mesh router: N, S, E, W, Local). When the tile injects a flit on
+  that plane, data_void_in(4) goes low, tile_inject pulses '1' for that
+  cycle, and the counter increments by 1 (per flit, per plane).
+
+  RTL is 1-indexed (mon_noc(1..6)); register file is 0-indexed
+  (count[MON_NOC_TILE_INJECT_BASE_INDEX + (N-1)]). libmonitors and our
+  monitor_run.c read all 6 indices 0..5 = RTL planes 1..6. There is no
+  off-by-one in our reads — every plane is captured.
+
+==> Verified WORKING for the CPU tile: 321,576 packets on plane 1 (CSV p0)
+    in one ResNet conv1 run, consistent with the CPU's coherent traffic.
+
+==> Verified ESSENTIALLY ZERO for NVDLA tiles in our captures:
+        plane 1 (CSV p0)  = 0     coh req
+        plane 2 (CSV p1)  = 0     coh fwd
+        plane 3 (CSV p2)  = 0     coh rsp
+        plane 4 (CSV p3)  = 0     DMA req     <-- expected to fire if NVDLA
+        plane 5 (CSV p4)  = ~50-200 packets   <-- only nonzero plane
+        plane 6 (CSV p5)  = 0
+
+==> Two conclusions about this:
+    (a) Reading the wrong plane is NOT the issue. We read all six.
+    (b) The driving signal genuinely does not pulse for NVDLA bulk data.
+        The most likely explanation is that NVDLA's DMA-to-NoC bridge in
+        the third-party tile wrapper does not connect to port 4 of the
+        per-tile NoC router on the planes that carry data. Only some
+        small control/MMIO traffic touches that router port (plane 5,
+        ~100 packets per run — likely register MMIO or completion
+        notifications, not data movement).
+
+==> Implication: any "NoC bandwidth" or "ai_noc" interpretation built on
+    these per-tile counters is invalid for NVDLA. The "NoC roofline" plot
+    in roofline_plots/roofline_noc.png reflects ops-per-control-packet,
+    not ops-per-data-byte, and should be discarded.
+
+1.3  acc_tot_cycles, acc_mem_cycles  (MON_ACC_TOT_*, MON_ACC_MEM_*)
+-------------------------------------------------------------------
+Verified WORKING for NVDLA tiles in this bitstream (non-zero values, varying
+with workload, internally consistent with submit() times). The semantics of
+"memory state" inside the tile FSM was not traced through RTL; libmonitors'
+print label calls it "mem cycles".
+
+================================================================================
+2) WHAT IS NOW STRICTLY-DEFENSIBLE AS A CONCLUSION
+================================================================================
+Listed by descending confidence.
+
+[H1] Output-channel split is BIT-EXACT CORRECT for all 11 ResNet-18 conv
+     layers tested.
+     Evidence: verify.sh PASS=11 FAIL=0 across all layers, with sizes
+     matching expected C_out * H_out * W_out element counts.
+     Verified independent re-runs of the same loadable produce identical
+     output (md5sum match).
+
+[H2] Output-channel split provides NEGATIVE per-tile speedup at 4-tile
+     parallelism for both layers tested in the original ResNet study.
+     Evidence: max acc_tot in 4-way / acc_tot baseline =
+        conv1       3.29x
+        layer4_3x3  3.20x
+
+[H3] The negative speedup observed in the ResNet 4-way O-channel split is
+     ALSO observed when 4 tiles run independent (non-cooperative) copies of
+     the same loadable. The slowdown factor is essentially the same.
+     Evidence (4-indep test, single-tile vs 4-indep max acc_tot):
+        as_in3_out512   3.54x      DRAM-write-saturating workload
+        ref_layer4      3.57x      latency-stalled workload
+        vh_h056         3.87x      latency-stalled workload
+     Interpretation: the slowdown does NOT come from any property specific
+     to output-channel split (input duplication, descriptor overhead, etc.).
+     SOMETHING about running 4 tiles in parallel slows each tile down
+     ~3.5-4x regardless of what they're computing.
+
+[H4] Aggregate SoC DRAM-write throughput is essentially capped at single-tile
+     peak. Running 4 tiles delivers only 1.04x-1.14x the DRAM-write bytes
+     per cycle of running 1 tile.
+        as_in3_out512  baseline 75.04 B/cy   4-indep 85.7 B/cy   +14.3%
+        ref_layer4      baseline  6.65 B/cy   4-indep  7.40 B/cy  +11.3%
+        vh_h056         baseline  6.33 B/cy   4-indep  6.57 B/cy   +3.7%
+     Note: "DRAM throughput" here means DRAM WRITE throughput (counter
+     limitation). The real picture for read-heavy workloads (which is most
+     of them) is unmeasured by this counter.
+
+[H5] Run-to-run reproducibility of NVDLA HW counters is high.
+     Evidence: same shape across three sweep groups (vh_h014, vc_c064,
+     vk_k3 — all 64->64 K=3 H=14) gives acc_tot_cycles within 0.5% of
+     each other (7.737M, 7.733M, 7.696M). This is a SHAPE-equivalence
+     check, not a true re-run check, but it is the strongest evidence
+     for reproducibility we have.
+
+[H6] Submit-time wall-clock is dominated by host-side (Ariane CPU) software
+     overhead, not NVDLA HW work.
+     Evidence: conv1_full submit = 5.79 s; acc_tot at 78 MHz = 22.95 M /
+     78 MHz = 0.294 s. Ratio 19.7x. Similar ratios for other configs.
+     Implication: any latency or throughput claim from submit-time alone
+     is mostly a measurement of the Ariane CPU running C++ runtime code,
+     not a measurement of NVDLA performance.
+
+[H7] NVDLA's per-tile FSM is reported as "memory-state" essentially every
+     cycle of every measurement. acc_tot - acc_mem in single digits across
+     all 27 single-tile configs and all 4-indep tile slots.
+     Caveat: "memory-state" is defined in the tile-wrapper FSM in a way we
+     did not verify against RTL. It may include cycles that are
+     algorithmically "compute" but happen to overlap with in-flight DMA.
+     The conclusion "NVDLA is doing zero compute" is too strong; the
+     conclusion "the wrapper FSM is in its memory state" is exactly what
+     the counter says.
+
+================================================================================
+3) WHAT IS NO LONGER A SUPPORTABLE CONCLUSION
+================================================================================
+The following items appeared in the prior summary or in chat. None should
+appear as final findings without additional measurement.
+
+[X1] "The bottleneck is the NoC path between NVDLA tiles and the single
+     shared memory tile."
+     Why retracted: the per-tile NoC inject counter does not fire for NVDLA
+     bulk data; the noc_inject_p3/p4 counts are control packets, not data.
+     We have NO direct measurement of NVDLA-tile NoC traffic. The contention
+     evidence (H4) shows only that SOME shared resource serializes; it does
+     not localize that resource to the NoC.
+
+[X2] "Adding more memory tiles (SOC_NMEM > 1) is the architectural change
+     that would relax this binder."
+     Why retracted: the same uncertainty as [X1]. If the binder is at the
+     memory tile or the LLC port, more memory tiles probably help. If the
+     binder is in the NVDLA-tile-to-NoC bridge (per-tile, not shared),
+     more memory tiles would not help. Our data does not distinguish.
+
+[X3] "Most workloads are memory-access-LATENCY bound, not bandwidth bound."
+     Why weakened: this rests on the spread in `dramB/cy` across configs,
+     interpreted as "DRAM has slack for most workloads." But `ddr_words`
+     is WRITES ONLY. Read-heavy workloads (most of ResNet's conv layers,
+     including ref_layer4 with 2.4 MB of weights) do not contribute to
+     ddr_words at all. The fact that those configs show low `dramB/cy`
+     might reflect a low write-traffic-to-cycles ratio for read-heavy work,
+     not slack at the DRAM port. The claim "DRAM is saturated" or "DRAM is
+     not saturated" cannot be answered with this counter alone.
+
+[X4] "Peak DRAM BW = 75 B/cy = 5.85 GB/s."
+     Why weakened: see 1.1. This is peak AXI-write throughput observed
+     during the run; "DRAM bandwidth" is a misnomer. Actual DRAM bandwidth
+     in either direction is not measured by this counter. Also some of the
+     observed write traffic is CPU-driven (cache writebacks during
+     nvdla_runtime), not NVDLA-driven, so even the peak number is not a
+     pure-NVDLA-write peak.
+
+[X5] "ai_noc" / "NoC roofline" / "noc_BW_per_cycle".
+     Invalid for NVDLA — the underlying counter does not capture NVDLA
+     bulk data. Drop the entire NoC-roofline figure.
+
+================================================================================
+4) WHAT THE DATA *DOES* CLEANLY SHOW
+================================================================================
+
+[F1] Some shared resource between the NVDLA tiles and the memory subsystem
+     limits multi-tile aggregate throughput to ~1x single-tile.
+     The data does not localize that resource. Candidates remaining:
+       - shared memory-tile coherence / DMA serialization
+       - LLC port contention
+       - per-NVDLA-tile AXI-to-NoC bridge bandwidth (not visible here)
+       - DRAM controller queue depth (less likely; aggregate writes barely
+         scale, but reads not measured)
+
+[F2] Per-tile NVDLA HW work scales sub-linearly with kernel size for small
+     workloads. Configs with ops < ~10M show acc_tot saturating around
+     ~7.7M cycles regardless of how few ops they need. Larger workloads
+     have acc_tot rising approximately proportional to ops.
+     This is a per-invocation overhead floor in the NVDLA tile pipeline
+     itself (descriptor processing, DMA setup, completion accounting).
+     Roughly: ~7M-cycle floor + work-proportional addition.
+
+[F3] Single-tile DRAM-write throughput varies 40x across workloads.
+     Highest: as_in3_out512 (75 B/cy) — output is 1.6 MB, the only config
+     with output >> weights or input. Lowest: vc_c016 (1.8 B/cy) — total
+     of 8 KB written. The 40x spread tracks output-byte size, not
+     algorithmic arithmetic intensity, since the counter only sees writes.
+
+[F4] Output-channel split is mathematically correct on this platform; bit-
+     exact concatenation reconstructs the unsplit baseline output for all
+     11 ResNet-18 layers tested.
+
+[F5] NVDLA HW counters are reproducible to ~0.5% across measurements of
+     the same shape compiled with different (random) weight values.
+
+================================================================================
+5) WHY WE CAN'T SEE NVDLA NoC TRAFFIC — ROOT-CAUSE TRACE
+================================================================================
+The diagnostic question was: "are we reading the wrong plane?" Answer:
+no. Trace below.
+
+Reader path (libmonitors.c lines 117-118):
+    for (p = 0; p < NOC_PLANES; p++)
+        for (t = 0; t < SOC_NTILES; t++)
+            vals->noc_injects[t][p] = read_monitor(t,
+                                MON_NOC_TILE_INJECT_BASE_INDEX + p);
+    NOC_PLANES = 6, so we read p = 0..5 -> register offsets 23..28.
+
+RTL counter path (esp_tile_csr.vhd lines 419-423):
+    for N in 1 to NOCS_NUM loop      -- N goes 1..6 (1-indexed)
+      if mon_noc(N).tile_inject = '1' then
+        count(MON_NOC_TILE_INJECT_BASE_INDEX + (N-1)) <=
+            count(MON_NOC_TILE_INJECT_BASE_INDEX + (N-1)) + 1;
+
+So register index 0..5 corresponds to RTL mon_noc(1..6). When CSV column
+noc_inject_p0 reads N=0, it gets the count for RTL plane 1. There is no
+off-by-one — we read all six planes; one of them (CSV p4 = RTL plane 5)
+is the only one with nonzero values for NVDLA tiles.
+
+Driver path (sync_noc_xy.vhd line 151):
+    mon_noc.tile_inject <= not data_void_in(4);
+data_void_in(4) is the LOCAL port of the 5-port (N,S,E,W,Local) NoC router.
+The signal pulses '1' whenever the tile injects a flit on this plane.
+
+For native ESP tiles (CPU, accelerator-stratus_hls, memory): tile data
+traffic enters the NoC via this local port, so the counter fires correctly.
+The ResNet conv1 measurement showed CPU tile's plane-1 inject = 321,576
+during one run — the counter works.
+
+For the third-party NVDLA tile in this bitstream: the counter does NOT
+fire for bulk data (planes 1-4 = 0; plane 5 = ~50-200 control packets;
+plane 6 = 0). Three possible mechanisms, in decreasing order of likelihood:
+
+  (a) NVDLA's AXI-to-NoC bridge in the ESP integration injects flits on the
+      memory-tile-bound NoC path through a different point than port 4 of
+      the per-tile router (e.g., directly into NoC fabric via a separate
+      bridge, or onto a different plane than the standard coh/DMA mapping).
+      The per-tile inject monitor would then not see the data flow.
+  (b) NVDLA traffic reaches the memory tile through coherence routing that
+      doesn't traverse the local port of the originating tile's router
+      (some shortcut path).
+  (c) The third-party tile wrapper instantiates the tile_inject monitor
+      stub but never connects it to NVDLA's actual data outputs.
+
+We did NOT trace this all the way through. To localize precisely, the next
+step would be to read fpga_tile_acc.vhd's NVDLA-specific generation block
+and see how NVDLA's AXI master is connected to the tile's NoC routers.
+
+================================================================================
+6) WHAT WOULD BE NEEDED TO RESOLVE THE OPEN QUESTIONS
+================================================================================
+Each item below would convert one of the [X*] retractions back into a
+defensible claim if successfully completed. None require new bitstream
+synthesis except #4.
+
+[R1] Confirm DDR write-counter unit.  Read the AXI W data width at the
+     DDR controller IP-block instantiation in fpga_tile_acc / tile_mem
+     and convert ddr_words bytes-per-increment from "1 word" to a known
+     byte width.  Cost: 5 minutes of grep.
+
+[R2] Add a DDR READ counter.  Easiest path: modify the detect_ddr_access
+     process to also assert mon_ddr.word_transfer when
+     ddr_axi_so.r.valid = '1' and ddr_axi_si.r.ready = '1', or add a
+     parallel monitor index for reads.  Either requires RTL change and
+     re-synthesis (~hours).
+
+[R3] Confirm whether NVDLA bulk data passes through any monitored point.
+     Read fpga_tile_acc.vhd around the NVDLA generate-block and the
+     accelerator tile's noc_domain_socket invocation.  Identify where the
+     NVDLA AXI master is bridged to the NoC.  If it bypasses port-4-local,
+     the counter genuinely cannot see it on this bitstream.
+
+[R4] Localize the multi-tile bottleneck.  Run a 2-tile measurement
+     (3 representative configs, 2 instances).  If acc_tot per tile in
+     2-tile mode is ~1.5x baseline, contention scales gradually with N
+     (consistent with shared-port hypothesis); if it is already ~3x
+     (jumping to the 4-tile slowdown), the bottleneck activates at low N
+     (consistent with single-resource serialization).
+     Cost: 6 monitor_run calls, ~1 minute on board.
+
+[R5] Same-loadable re-run consistency.  Run ref_layer4 5 times in a row
+     and report cycle spread.  If <2% spread, confirms (H5) more rigorously
+     and provides an error bar for all numbers in this study.
+     Cost: 5 monitor_run calls, ~1 minute on board.
+
+================================================================================
+END
+================================================================================
+
+================================================================================
+APPENDIX (added later 2026-05-07) — TA HYPOTHESIS VERIFIED:
+                                    NVDLA BURST SIZE vs NoC PAYLOAD MISMATCH
+================================================================================
+The TA's intuition ("NoC supports ~2048B payload per transaction, NVDLA only
+bursts ~32B, causing massive header overhead") is CORRECT in form. The actual
+numbers in this bitstream are:
+
+   NoC max DMA payload per AXI transaction:  2048 bytes
+   NVDLA nv_small payload per AXI transaction:  8 bytes
+   Efficiency ratio:                          1 / 256
+
+Trace below.
+
+A.1  NVDLA per-transaction payload — 8 bytes
+--------------------------------------------
+NVDLA configuration in use is `nv_small`. The relevant defines from
+accelerators/third-party/NV_NVDLA/ip/spec/defs/nv_small.spec:
+
+    #define PRIMARY_MEMIF_MAX_BURST_LENGTH_1
+    #define PRIMARY_MEMIF_WIDTH_64
+
+These propagate (via projects.spec lines 288-303) to:
+    NVDLA_PRIMARY_MEMIF_MAX_BURST_LENGTH = 1     -- 1 AXI beat per burst
+    NVDLA_PRIMARY_MEMIF_WIDTH             = 64   -- bits per beat = 8 bytes
+
+In NV_NVDLA_wrapper.v, the AXI master output:
+    output wire [64 -1:0] nvdla_core2dbb_wdata     -- 64-bit data path
+    output wire [7:0]     nvdla_core2dbb_awlen     -- 8-bit burst-length field
+
+The drivers in the NVDLA core (e.g. NV_NVDLA_MCIF_READ_IG_cvt.v line 369):
+    assign mcif2noc_axi_ar_arlen = {{2{1'b0}}, opipe_axi_len};
+
+opipe_axi_len is computed from cmd_size, which is bounded by
+NVDLA_PRIMARY_MEMIF_MAX_BURST_LENGTH = 1, so awlen/arlen = 0 (= 1 beat).
+
+==> Every NVDLA memory transaction in this build moves 8 bytes of payload.
+
+For comparison, nv_small_256_full.spec sets
+PRIMARY_MEMIF_MAX_BURST_LENGTH_4 (4 beats, 32 bytes/transaction) and
+nv_medium_1024_full.spec / nv_large.spec use 4 beats × 256 bits = 128 bytes.
+
+A.2  ESP NoC max payload — 2048 bytes
+--------------------------------------
+From rtl/sockets/proxy/axislv2noc.vhd lines 201, 214, 328:
+    tran.len := ('0' & mosi.aw.len) + "0000001";        -- AXI beats + 1
+    tran.payload_length(8 downto 0) := tran.len;        -- 9-bit length field
+
+AXI4 awlen is 8 bits; +1 yields 1..256 beats. The NoC `tran.len` field is
+9 bits wide, so up to 512 representable; AXI standard caps it at 256.
+Each beat carries 64 bits (= 8 bytes) of DMA NoC flit width:
+    constant DMA_NOC_WIDTH : integer := 64;     -- esp_global.vhd line 19
+
+==> Max NoC payload per single AXI transaction = 256 × 8 = 2048 bytes.
+
+A.3  Penalty to NoC bandwidth
+-----------------------------
+Each NoC transaction has a fixed cost of HEADER + TAIL flits irrespective of
+payload length. Approximate header-flit count per transaction is 2 (1 routing
+header + 1 length flit). Each flit = 64 bits + 2-bit preamble = 8.25 bytes.
+
+Per-transaction efficiency:
+    payload  | header  | total   | useful payload %
+    8   B    | 16 B    | 24 B    | 33.3 %     <-- nv_small (this build)
+    32  B    | 16 B    | 48 B    | 66.7 %     <-- nv_small_256_full (4-beat)
+    128 B    | 16 B    | 144 B   | 88.9 %     <-- nv_medium / nv_large
+    2048B    | 16 B    | 2064 B  | 99.2 %     <-- max NoC capacity
+
+To move 2.4 MB of weights (e.g. layer4_3x3) the NoC transmits:
+    nv_small         (1-beat):  2.4 MB / 8B   = 300,000 transactions
+                                * 24 B effective bytes  =  7.2 MB on NoC
+    max-burst (256-beat):       2.4 MB / 2048B = 1,200 transactions
+                                * 2064 B effective       =  2.5 MB on NoC
+
+==> nv_small uses ~3x the NoC bandwidth (header overhead) of an optimal-
+    burst configuration to move the same amount of data.
+
+A.4  Penalty to MEMORY-ACCESS LATENCY (much larger than header overhead)
+------------------------------------------------------------------------
+Each AXI transaction pays one full request->response round trip:
+    NVDLA issues AR -> NoC transit -> memory tile -> DRAM controller ->
+    LLC/DRAM access -> response NoC transit -> NVDLA receives R data.
+
+That round-trip pays a fixed latency tax (NoC hops, arbitration, DRAM RAS/CAS,
+etc). The latency is approximately the same whether the transaction transfers
+8 bytes or 2048 bytes.
+
+A 1-beat NVDLA transaction therefore amortizes the round-trip latency over
+8 bytes of useful data. A 256-beat transaction amortizes it over 2048 bytes
+(256x better).
+
+For 2.4 MB of weights:
+    nv_small (1-beat):  300,000 round-trips, all serialized through the
+                        same memory tile.
+    nv_medium (4-beat):  75,000 round-trips.
+    max-burst:            1,200 round-trips.
+
+If the platform can sustain ~M outstanding requests at a time (pipelining
+the round-trips), nv_small needs 300,000 / M cycle waves of latency. At
+M = 4 outstanding and ~200 cycles per round-trip, the lower bound is
+    300,000 / 4 * 200  =  15,000,000 cycles ~= 0.19 s at 78 MHz
+just for weight DMA on a single layer. This is the same order of magnitude
+as the acc_tot_cycles values we observed (~10 M for ref_layer4) and
+explains the ~7 M-cycle "fixed overhead floor" finding from the roofline
+sweep.
+
+==> The 1-beat burst configuration is THE primary structural reason for
+    the platform appearing memory-latency-bound on every workload
+    regardless of arithmetic intensity.
+
+A.5  How much would a 4-beat or higher build help?
+---------------------------------------------------
+Going from 1-beat (nv_small) to 4-beat (nv_small_256_full) would cut
+transaction count by 4x, dropping the latency-amortization floor by ~4x.
+The roofline study found acc_tot ~ 7-10 M cycles per single-tile
+single-conv invocation; a 4x reduction would put it at ~2 M cycles =
+~25 ms at 78 MHz, in the same ballpark as the theoretical lower bound
+for compute (e.g. ref_layer2 at 128 ops/cy peak would take ~1.8 M cycles).
+
+This is the cleanest single-knob change to test the latency hypothesis:
+re-synthesize with nv_small_256_full instead of nv_small (or with the
+NVDLA spec's PRIMARY_MEMIF_MAX_BURST_LENGTH_4 macro defined). Cost: hours
+of Vivado synthesis. Reward: directly measures whether per-transaction
+round-trip is the binding constraint.
+
+A.6  Why we cannot see NoC traffic — partial trace
+---------------------------------------------------
+NVDLA's data path through the NoC, traced in
+socs/.../socketgen/noc_NV_NVDLA.vhd:
+
+    NV_NVDLA_wrapper        (lines 180-235)
+       |  AXI master signals on mosi/somi
+       v
+    axislv2noc              (lines 251-280, retarget_for_dma=1)
+       |  drives dma_snd_data_in_int  / coherent_dma_snd_data_in
+       v
+    Choice based on coherence config (lines 287-306):
+       if coherence /= ACC_COH_NONE:  -> coherent_dma_snd  (NoC plane 6)
+       else:                          -> dma_snd            (NoC plane 4)
+
+ESP NoC plane assignments in this SoC (from
+rtl/sockets/sockets/noc_domain_socket.vhd lines 165-180):
+    Plane 1 (coh):  cache-coherence request
+    Plane 2 (coh):  cache-coherence forward
+    Plane 3 (coh):  cache-coherence response
+    Plane 4 (dma):  non-coherent DMA               <-- NVDLA data lands here
+                                                       in non-coherent mode
+    Plane 5 (misc): I/O / APB / IRQ
+    Plane 6 (dma):  second DMA path (coherent DMA) <-- NVDLA data lands here
+                                                       in coherent mode
+
+In our captures, the per-tile inject counters for the NVDLA tile show:
+    plane 1..3 (CSV p0..p2) = 0
+    plane 4    (CSV p3)     = 0    <-- expected to fire if non-coh DMA
+    plane 5    (CSV p4)     = 50-200 packets  <-- only nonzero (likely
+                                                  APB/MMIO from CPU into
+                                                  NVDLA register space)
+    plane 6    (CSV p5)     = 0    <-- expected to fire if coh DMA
+
+==> EITHER plane 4 OR plane 6 should be firing for NVDLA data DMA, but
+    NEITHER does.
+
+The signal that drives the counter is mon_noc(N).tile_inject =
+not data_void_in(4) at the per-tile NoC router for plane N (sync_noc_xy.vhd
+line 151). data_void_in(4) is the local port of the 5-port (N,S,E,W,Local)
+mesh router. It should pulse low whenever the dma_snd / coherent_dma_snd
+FIFO drains a flit into the router's local input.
+
+We did not fully trace why the local-port valid signal fails to fire for
+NVDLA's plane-4 / plane-6 data. Possible reasons (none confirmed):
+
+ (i)   The retarget_for_dma=1 mode of axislv2noc may use a different
+       FIFO-to-NoC binding than the standard local-port path the monitor
+       watches.
+ (ii)  Some port of the NoC router used by NVDLA's bridge may be a
+       different index than 4 in this SoC's generated wiring (e.g. tied
+       to a "tile" port distinct from the Local-mesh-port that the
+       monitor watches).
+ (iii) The NVDLA tile's noc_domain_socket may instantiate sync_noc_set_acc
+       differently than CPU/native-acc tiles, with the monitor signal
+       driven from a different physical wire.
+
+==> For the report, the NoC traffic is INDIRECTLY visible: ddr_words at
+    the memory tile, mem_dma_reqs/rsps and mem_coh_reqs at the memory
+    tile both fire correctly during NVDLA execution. The MISSING signal
+    is per-NVDLA-tile injection, which prevents per-tile NoC bandwidth
+    accounting.
+
+A.7  Updated bottom-line
+-------------------------
+With these findings folded in, the report can now make a stronger and
+more concrete claim than "memory subsystem is the bottleneck":
+
+  The bottleneck is plausibly localized to the per-AXI-transaction
+  round-trip latency of NVDLA's memory interface. nv_small in this
+  bitstream issues ALL memory transactions as 1-beat (8-byte) bursts,
+  which is the smallest option in the NVDLA spec (vs 4-beat or higher
+  in larger configs). Each transaction pays one full memory round trip
+  (NoC + LLC + DRAM controller + DRAM access), and 1-beat bursts
+  amortize that round-trip over only 8 bytes. For a single conv layer
+  with megabytes of weights, this generates 100,000+ round-trips per
+  invocation — directly producing the "100% memory-bound" character
+  observed at every measurement.
+
+  This explanation:
+   - is consistent with all of [F1]-[F5] in the main audit document,
+   - identifies a CONCRETE STRUCTURAL CAUSE (1-beat bursts) rather than
+     a vague "shared memory subsystem" hand-wave,
+   - is directly testable by re-synthesizing with PRIMARY_MEMIF_MAX_BURST
+     LENGTH_4,
+   - is consistent with the TA's hypothesis (modulo a memory of 32B
+     vs the actual 8B; the TA may have been recalling
+     nv_small_256_full's 4-beat = 32B configuration).
+
+The earlier suggestion to "add more memory tiles" remains plausible-but-
+unverified; it would help if the contention is at the memory tile.
+The ALSO-PLAUSIBLE fix is to widen NVDLA's burst length, which addresses
+the 1-beat-burst penalty directly without changing the SoC topology.
+================================================================================

@@ -1,0 +1,200 @@
+[
+  {
+    "layer": "conv1",
+    "shape": {
+      "c_in": 3,
+      "c_out": 64,
+      "h": 224,
+      "kernel": 7,
+      "stride": 2,
+      "pad": 3
+    },
+    "full": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/conv1_full/conv1_full.nvdla",
+    "splits": [
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/conv1_split0_of4/conv1_split0_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/conv1_split1_of4/conv1_split1_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/conv1_split2_of4/conv1_split2_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/conv1_split3_of4/conv1_split3_of4.nvdla"
+    ]
+  },
+  {
+    "layer": "layer1_3x3",
+    "shape": {
+      "c_in": 64,
+      "c_out": 64,
+      "h": 56,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "full": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer1_3x3_full/layer1_3x3_full.nvdla",
+    "splits": [
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer1_3x3_split0_of4/layer1_3x3_split0_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer1_3x3_split1_of4/layer1_3x3_split1_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer1_3x3_split2_of4/layer1_3x3_split2_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer1_3x3_split3_of4/layer1_3x3_split3_of4.nvdla"
+    ]
+  },
+  {
+    "layer": "layer2_0_3x3",
+    "shape": {
+      "c_in": 64,
+      "c_out": 128,
+      "h": 56,
+      "kernel": 3,
+      "stride": 2,
+      "pad": 1
+    },
+    "full": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer2_0_3x3_full/layer2_0_3x3_full.nvdla",
+    "splits": [
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer2_0_3x3_split0_of4/layer2_0_3x3_split0_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer2_0_3x3_split1_of4/layer2_0_3x3_split1_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer2_0_3x3_split2_of4/layer2_0_3x3_split2_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer2_0_3x3_split3_of4/layer2_0_3x3_split3_of4.nvdla"
+    ]
+  },
+  {
+    "layer": "layer2_3x3",
+    "shape": {
+      "c_in": 128,
+      "c_out": 128,
+      "h": 28,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "full": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer2_3x3_full/layer2_3x3_full.nvdla",
+    "splits": [
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer2_3x3_split0_of4/layer2_3x3_split0_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer2_3x3_split1_of4/layer2_3x3_split1_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer2_3x3_split2_of4/layer2_3x3_split2_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer2_3x3_split3_of4/layer2_3x3_split3_of4.nvdla"
+    ]
+  },
+  {
+    "layer": "layer2_0_ds",
+    "shape": {
+      "c_in": 64,
+      "c_out": 128,
+      "h": 56,
+      "kernel": 1,
+      "stride": 2,
+      "pad": 0
+    },
+    "full": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer2_0_ds_full/layer2_0_ds_full.nvdla",
+    "splits": [
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer2_0_ds_split0_of4/layer2_0_ds_split0_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer2_0_ds_split1_of4/layer2_0_ds_split1_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer2_0_ds_split2_of4/layer2_0_ds_split2_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer2_0_ds_split3_of4/layer2_0_ds_split3_of4.nvdla"
+    ]
+  },
+  {
+    "layer": "layer3_0_3x3",
+    "shape": {
+      "c_in": 128,
+      "c_out": 256,
+      "h": 28,
+      "kernel": 3,
+      "stride": 2,
+      "pad": 1
+    },
+    "full": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer3_0_3x3_full/layer3_0_3x3_full.nvdla",
+    "splits": [
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer3_0_3x3_split0_of4/layer3_0_3x3_split0_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer3_0_3x3_split1_of4/layer3_0_3x3_split1_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer3_0_3x3_split2_of4/layer3_0_3x3_split2_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer3_0_3x3_split3_of4/layer3_0_3x3_split3_of4.nvdla"
+    ]
+  },
+  {
+    "layer": "layer3_3x3",
+    "shape": {
+      "c_in": 256,
+      "c_out": 256,
+      "h": 14,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "full": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer3_3x3_full/layer3_3x3_full.nvdla",
+    "splits": [
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer3_3x3_split0_of4/layer3_3x3_split0_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer3_3x3_split1_of4/layer3_3x3_split1_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer3_3x3_split2_of4/layer3_3x3_split2_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer3_3x3_split3_of4/layer3_3x3_split3_of4.nvdla"
+    ]
+  },
+  {
+    "layer": "layer3_0_ds",
+    "shape": {
+      "c_in": 128,
+      "c_out": 256,
+      "h": 28,
+      "kernel": 1,
+      "stride": 2,
+      "pad": 0
+    },
+    "full": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer3_0_ds_full/layer3_0_ds_full.nvdla",
+    "splits": [
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer3_0_ds_split0_of4/layer3_0_ds_split0_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer3_0_ds_split1_of4/layer3_0_ds_split1_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer3_0_ds_split2_of4/layer3_0_ds_split2_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer3_0_ds_split3_of4/layer3_0_ds_split3_of4.nvdla"
+    ]
+  },
+  {
+    "layer": "layer4_0_3x3",
+    "shape": {
+      "c_in": 256,
+      "c_out": 512,
+      "h": 14,
+      "kernel": 3,
+      "stride": 2,
+      "pad": 1
+    },
+    "full": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer4_0_3x3_full/layer4_0_3x3_full.nvdla",
+    "splits": [
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer4_0_3x3_split0_of4/layer4_0_3x3_split0_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer4_0_3x3_split1_of4/layer4_0_3x3_split1_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer4_0_3x3_split2_of4/layer4_0_3x3_split2_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer4_0_3x3_split3_of4/layer4_0_3x3_split3_of4.nvdla"
+    ]
+  },
+  {
+    "layer": "layer4_3x3",
+    "shape": {
+      "c_in": 512,
+      "c_out": 512,
+      "h": 7,
+      "kernel": 3,
+      "stride": 1,
+      "pad": 1
+    },
+    "full": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer4_3x3_full/layer4_3x3_full.nvdla",
+    "splits": [
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer4_3x3_split0_of4/layer4_3x3_split0_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer4_3x3_split1_of4/layer4_3x3_split1_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer4_3x3_split2_of4/layer4_3x3_split2_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer4_3x3_split3_of4/layer4_3x3_split3_of4.nvdla"
+    ]
+  },
+  {
+    "layer": "layer4_0_ds",
+    "shape": {
+      "c_in": 256,
+      "c_out": 512,
+      "h": 14,
+      "kernel": 1,
+      "stride": 2,
+      "pad": 0
+    },
+    "full": "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer4_0_ds_full/layer4_0_ds_full.nvdla",
+    "splits": [
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer4_0_ds_split0_of4/layer4_0_ds_split0_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer4_0_ds_split1_of4/layer4_0_ds_split1_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer4_0_ds_split2_of4/layer4_0_ds_split2_of4.nvdla",
+      "/home/wx2341/esp/socs/xilinx-vcu118-xcvu9p/intra_parallel/resnet18_out/layer4_0_ds_split3_of4/layer4_0_ds_split3_of4.nvdla"
+    ]
+  }
+]
