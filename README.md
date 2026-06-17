@@ -75,17 +75,15 @@ nvdla-intra-parallel/
 │       │                          are NOT included — they are regenerable)
 │       ├── resnet18_manifest.json
 │       └── roofline_manifest.json
-├── docs/
-│   ├── measurement_summary.txt     ResNet-18 4-data-point study, raw numbers
-│   ├── results_summary_2026-05-06.txt  Consolidated results
-│   ├── audit_2026-05-07.txt         Corrected conclusions + counter semantics
-│   │                                (READ THIS for what each counter means and
-│   │                                 the honest limitations)
+└── docs/
+    ├── measurement_summary.txt     ResNet-18 4-data-point study, raw numbers
+    ├── results_summary_2026-05-06.txt  Consolidated results
+    ├── audit_2026-05-07.txt         Corrected conclusions + counter semantics
+    │                                (READ THIS for what each counter means and
+    │                                 the honest limitations)
     └── meeting_transcription.txt    TA meeting on DRAM-bandwidth interpretation
 ```
 
-> The written report and slide decks are intentionally **not** included in
-> this repository.
 
 ### What is intentionally excluded
 
