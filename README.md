@@ -31,8 +31,9 @@ inside the [ESP](https://www.esp.cs.columbia.edu/) platform.
    With a single shared memory tile, four tiles contend for one serialization
    slot, so per-tile time grows ~linearly with tile count.
 
-The full write-up is in [`report/final.tex`](report/final.tex). The honest
-limitations and what we could *not* measure are in
+The consolidated results are in
+[`docs/results_summary_2026-05-06.txt`](docs/results_summary_2026-05-06.txt).
+The honest limitations and what we could *not* measure are in
 [`docs/audit_2026-05-07.txt`](docs/audit_2026-05-07.txt).
 
 ---
@@ -80,15 +81,11 @@ nvdla-intra-parallel/
 │   ├── audit_2026-05-07.txt         Corrected conclusions + counter semantics
 │   │                                (READ THIS for what each counter means and
 │   │                                 the honest limitations)
-│   └── meeting_transcription.txt    TA meeting on DRAM-bandwidth interpretation
-├── report/
-│   ├── proposal.tex  midterm.tex  final.tex
-│   └── figs/                       All report/presentation figures
-└── slides/
-    ├── wx2341_midtermPres.pptx
-    ├── wx2341_finalPres.pptx
-    └── wx2341_finalPres_script.txt
+    └── meeting_transcription.txt    TA meeting on DRAM-bandwidth interpretation
 ```
+
+> The written report and slide decks are intentionally **not** included in
+> this repository.
 
 ### What is intentionally excluded
 
